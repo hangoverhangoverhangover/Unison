@@ -1,0 +1,25 @@
+{
+  "name": "combined-player-jam-relay",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Cloudflare Worker + Durable Object relay for Unison Jams",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "types": "wrangler types",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run && npm run test:workers",
+    "test:workers": "vitest run -c vitest.workers.config.ts --max-workers=1 --no-isolate",
+    "two-clients": "node scripts/two-clients.mjs"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "^1.8.1",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0",
+    "wrangler": "^4.161.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

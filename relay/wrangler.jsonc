@@ -1,0 +1,18 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "combined-player-jam",
+  "main": "src/index.ts",
+  // Behaviour this code relies on: deleteAll() also clears the alarm (>= 2026-02-24) and the
+  // runtime auto-replies to WebSocket close frames (>= 2026-04-07).
+  "compatibility_date": "2026-11-01",
+  "workers_dev": true,
+  "observability": { "enabled": false },
+  "durable_objects": {
+    "bindings": [{ "name": "JAM_ROOM", "class_name": "JamRoom" }]
+  },
+  // Declarative Durable Object config (replaces the legacy "migrations" array).
+  // SQLite storage is the only backend on the Workers Free plan.
+  "exports": {
+    "JamRoom": { "type": "durable-object", "storage": "sqlite" }
+  }
+}
