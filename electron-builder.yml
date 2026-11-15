@@ -1,0 +1,48 @@
+appId: com.tripp.combinedplayer
+productName: Unison
+copyright: Unison contributors
+
+directories:
+  output: dist
+  buildResources: build
+
+# castLabs Electron (Widevine) is already installed in node_modules; package that
+# instead of downloading stock Electron. This only builds for the platform it is on.
+electronDist: node_modules/electron/dist
+
+# better-sqlite3 ships N-API prebuilds, so no rebuild against the castLabs headers.
+npmRebuild: false
+
+files:
+  - out/**
+  - resources/**
+  - package.json
+  - '!**/*.map'
+asarUnpack:
+  - '**/*.node'
+
+# yt-dlp.exe and ffmpeg.exe go next to the app (resources/bin). They are not in git;
+# put them in bin/ before building.
+extraResources:
+  - from: bin
+    to: bin
+    filter:
+      - yt-dlp.exe
+      - ffmpeg.exe
+
+# Widevine needs a VMP signature on the final exe (see scripts/vmp-sign.cjs).
+afterSign: scripts/vmp-sign.cjs
+
+win:
+  icon: build/icon.ico
+  executableName: Unison
+  target:
+    - nsis
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  artifactName: Unison-Setup-${version}.${ext}
+  shortcutName: Unison
+  uninstallDisplayName: Unison
+  createDesktopShortcut: always
