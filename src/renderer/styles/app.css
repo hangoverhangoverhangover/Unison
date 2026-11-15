@@ -1,0 +1,287 @@
+@import 'tailwindcss';
+
+/*
+ * Tailwind theme mirrors src/renderer/styles/tokens.ts (the approved source).
+ * styles/tokens.test.ts fails if the two drift.
+ */
+/*
+ * Theme-dependent colours. Values live in the --glass-* variables below (dark on
+ * :root, light on :root[data-theme='light']); `inline` makes utilities reference
+ * those variables directly so they follow data-theme on <html>.
+ */
+@theme inline {
+  --color-*: initial;
+  --color-base: var(--glass-base);
+  --color-panel: var(--glass-tint);
+  --color-overlay: var(--glass-tint-strong);
+  --color-raised: var(--glass-raised);
+  --color-raised-hover: var(--glass-raised-hover);
+  --color-text: var(--glass-text);
+  --color-text-subdued: var(--glass-text-subdued);
+  --color-text-muted: var(--glass-text-muted);
+  --color-divider: var(--glass-divider);
+  --color-progress-track: var(--glass-progress-track);
+  --color-scrim: var(--glass-scrim);
+}
+
+@theme {
+  --color-accent: #7289da;
+  --color-accent-hover: #8299e6;
+  --color-accent-pressed: #5f74c4;
+  --color-on-accent: #1e2233;
+  --color-like: #f15e6c;
+  --color-danger: #e5484d;
+  --color-spotify: #1ed760;
+  --color-soundcloud: #ff5500;
+  --color-local: #b3b5bc;
+  --color-transparent: transparent;
+  --color-black: #000000;
+  --color-white: #ffffff;
+
+  --font-sans: 'Figtree Variable', 'Segoe UI Variable', system-ui, sans-serif;
+
+  --text-xs: 11px;
+  --text-xs--line-height: 14px;
+  --text-sm: 13px;
+  --text-sm--line-height: 18px;
+  --text-md: 14px;
+  --text-md--line-height: 20px;
+  --text-lg: 16px;
+  --text-lg--line-height: 22px;
+  --text-xl: 24px;
+  --text-xl--line-height: 30px;
+  --text-hero: 72px;
+  --text-hero--line-height: 76px;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-panel: 12px;
+  --radius-play-bar: 18px;
+
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+}
+
+/* Glass sets mirror tokens.ts `glass`. The mini player never sets data-theme, so it stays dark. */
+:root {
+  --glass-base: #141522;
+  --glass-tint: rgba(20, 18, 32, 0.42);
+  --glass-tint-strong: rgba(24, 20, 38, 0.62);
+  --glass-play-bar: rgba(18, 14, 30, 0.45);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-highlight: rgba(255, 255, 255, 0.06);
+  --glass-raised: rgba(255, 255, 255, 0.08);
+  --glass-raised-hover: rgba(255, 255, 255, 0.12);
+  --glass-scrim: rgba(0, 0, 0, 0.25);
+  --glass-text: #ffffff;
+  --glass-text-subdued: rgba(255, 255, 255, 0.72);
+  --glass-text-muted: rgba(255, 255, 255, 0.58);
+  --glass-divider: rgba(255, 255, 255, 0.08);
+  --glass-progress-track: rgba(255, 255, 255, 0.18);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.16);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.28);
+
+  --blur-panel: 28px;
+  --blur-play-bar: 56px;
+  --blur-overlay: 40px;
+  --blur-ambient: 80px;
+
+  --play-bar-height: 64px;
+  --play-bar-inset: 14px;
+  --list-fade: 24px;
+  color-scheme: dark;
+}
+
+:root[data-theme='light'] {
+  --glass-base: #eef0f5;
+  --glass-tint: rgba(255, 255, 255, 0.6);
+  --glass-tint-strong: rgba(255, 255, 255, 0.78);
+  --glass-play-bar: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(0, 0, 0, 0.06);
+  --glass-highlight: rgba(255, 255, 255, 0.7);
+  --glass-raised: rgba(20, 21, 26, 0.05);
+  --glass-raised-hover: rgba(20, 21, 26, 0.09);
+  --glass-scrim: rgba(0, 0, 0, 0.15);
+  --glass-text: #14151a;
+  --glass-text-subdued: rgba(20, 21, 26, 0.72);
+  --glass-text-muted: rgba(20, 21, 26, 0.52);
+  --glass-divider: rgba(20, 21, 26, 0.08);
+  --glass-progress-track: rgba(20, 21, 26, 0.14);
+  --scrollbar-thumb: rgba(20, 21, 26, 0.18);
+  --scrollbar-thumb-hover: rgba(20, 21, 26, 0.3);
+  color-scheme: light;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-base text-md text-text font-sans antialiased;
+    overflow: hidden;
+    user-select: none;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  button {
+    cursor: default;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  /* Thin overlay scrollbars like the references. */
+  ::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border: 4px solid transparent;
+    border-radius: 9999px;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--scrollbar-thumb-hover);
+  }
+  ::-webkit-scrollbar-track,
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+}
+
+@utility drag {
+  -webkit-app-region: drag;
+}
+@utility no-drag {
+  -webkit-app-region: no-drag;
+}
+
+/*
+ * Frosted glass. The blur sits on a ::before layer, never on the element itself:
+ * an element with backdrop-filter becomes a "backdrop root", and glass nested inside
+ * it (the play bar inside the main page) could no longer blur what's behind it.
+ */
+@utility glass {
+  position: relative;
+  isolation: isolate;
+  background-color: var(--glass-tint);
+  border: 1px solid var(--glass-border);
+  box-shadow: inset 0 1px 0 var(--glass-highlight);
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    pointer-events: none;
+    backdrop-filter: blur(var(--blur-panel)) saturate(1.5);
+  }
+}
+
+/* Dialogs, menus, popovers, quick search: denser frost and a deep shadow. */
+@utility glass-strong {
+  position: relative;
+  isolation: isolate;
+  background-color: var(--glass-tint-strong);
+  border: 1px solid var(--glass-border);
+  box-shadow:
+    inset 0 1px 0 var(--glass-highlight),
+    0 24px 64px rgba(0, 0, 0, 0.45);
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    pointer-events: none;
+    backdrop-filter: blur(var(--blur-overlay)) saturate(1.6);
+  }
+}
+
+/* The floating play bar: heavy blur plus a smoky tint so its text always reads. */
+@utility glass-bar {
+  position: relative;
+  isolation: isolate;
+  background-color: var(--glass-play-bar);
+  border: 1px solid var(--glass-border);
+  box-shadow:
+    inset 0 1px 0 var(--glass-highlight),
+    0 12px 40px rgba(0, 0, 0, 0.4);
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    pointer-events: none;
+    backdrop-filter: blur(var(--blur-play-bar)) saturate(1.4);
+  }
+}
+
+/*
+ * Page scroll areas: content fades out just above the floating play bar, so rows
+ * never collide with the bar's own text. Goes on the scroll container (a sibling of
+ * the play bar), never on an ancestor of it.
+ */
+@utility page-fade {
+  --fade-stop: calc(var(--play-bar-height) + var(--play-bar-inset));
+  mask-image: linear-gradient(
+    to bottom,
+    #000 calc(100% - var(--fade-stop) - var(--list-fade)),
+    transparent calc(100% - var(--fade-stop) + 8px)
+  );
+}
+
+/* Bottom padding for page scroll areas: the floating bar, its inset and the fade. */
+@utility pb-page {
+  padding-bottom: calc(var(--play-bar-height) + var(--play-bar-inset) + var(--list-fade));
+}
+
+/*
+ * Settings cards. Translucent, not blurred: they sit inside the page's masked scroll
+ * area, where a backdrop blur would have nothing behind it to blur.
+ */
+@utility settings-card {
+  scroll-margin-top: 24px;
+  border-radius: 16px;
+  background-color: var(--glass-raised);
+  box-shadow: inset 0 0 0 1px var(--glass-divider);
+  padding: 20px;
+}
+
+/* "Now playing" bars (EqBars): each bar bounces on its own rhythm. */
+@keyframes eq-bounce {
+  0%,
+  100% {
+    transform: scaleY(0.35);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+.eq-bars rect {
+  transform-box: fill-box;
+  transform-origin: bottom;
+  animation: eq-bounce 0.9s ease-in-out infinite;
+}
+.eq-bars rect:nth-child(2) {
+  animation-duration: 0.7s;
+  animation-delay: -0.3s;
+}
+.eq-bars rect:nth-child(3) {
+  animation-duration: 1.1s;
+  animation-delay: -0.6s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .eq-bars rect {
+    animation: none;
+    transform: scaleY(0.7);
+  }
+}
