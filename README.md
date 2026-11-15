@@ -9,7 +9,7 @@
   One queue that mixes all three, one Liked Songs list, one search, wrapped in frosted glass that takes its colour from whatever is playing.
 </p>
 
-<p align="center">Windows desktop app · Electron + React · personal project</p>
+<p align="center">Windows desktop app · Electron + React</p>
 
 > [!NOTE]
 > Unison isn't packaged as an installer yet, so for now you run it from source (see [Getting started](#getting-started)).
@@ -50,7 +50,7 @@
 
 ### Listen together
 
-- **Jam:** start a session, share the code, and everyone adds to one queue. Each person plays on their own accounts, and playback stays in sync across Spotify and SoundCloud. Only the queue and the timing pass through the relay: no audio, no logins.
+- **Jam:** start a session, share the code, and everyone adds to one queue. Each person plays on their own accounts, and playback stays in sync across Spotify and SoundCloud.
 
 ### Look and feel
 
