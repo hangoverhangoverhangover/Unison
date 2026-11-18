@@ -1,0 +1,23 @@
+node_modules
+out
+dist
+release
+.DS_Store
+.eslintcache
+*.log*
+
+# Secrets: app keys, local overrides, user data
+.env
+.env.*
+!.env.example
+config.local.json
+userData/
+
+# Bundled third-party binaries (large; copied into userData at runtime)
+bin/*.exe
+
+# Playwright smoke screenshots
+screenshots/
+
+.superpowers/
+*.tsbuildinfo

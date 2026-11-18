@@ -12,7 +12,7 @@
 <p align="center">Windows desktop app · Electron + React</p>
 
 > [!NOTE]
-> Unison isn't packaged as an installer yet, so for now you run it from source (see [Getting started](#getting-started)).
+> There's no ready-made download yet. Run Unison from source (see [Getting started](#getting-started)) or build the installer yourself (see [Building the installer](#building-the-installer)).
 
 ---
 
@@ -271,7 +271,7 @@ The build VMP-signs `Unison.exe` after packaging, which Spotify playback needs. 
 
 Release builds include only public identifiers from `.env`: the Discord application ID and the Jam relay URL. Spotify and SoundCloud keys are left out, so everyone who installs the app adds their own Spotify Client ID in Settings → Spotify.
 
-Project layout: `src/main` (Electron main process: services, library, database, IPC), `src/preload` (typed IPC bridge), `src/renderer` (React UI), `src/shared` (types shared by both), `relay/` (Jam relay, Cloudflare Worker). The roadmap and design decisions are in `ROADMAP.md`.
+Project layout: `src/main` (Electron main process: services, library, database, IPC), `src/preload` (typed IPC bridge), `src/renderer` (React UI), `src/shared` (types shared by both), `relay/` (Jam relay, Cloudflare Worker).
 
 ### Built with
 
