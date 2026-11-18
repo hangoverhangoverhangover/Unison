@@ -11,8 +11,7 @@
 
 <p align="center">Windows desktop app · Electron + React</p>
 
-> [!NOTE]
-> There's no ready-made download yet. Run Unison from source (see [Getting started](#getting-started)) or build the installer yourself (see [Building the installer](#building-the-installer)).
+<p align="center"><a href="https://github.com/hangoverhangoverhangover/Unison/releases/latest"><strong>Download the latest installer</strong></a></p>
 
 ---
 
@@ -62,17 +61,34 @@
 
 ---
 
-## Requirements
+## Install
+
+1. Download `Unison-Setup-<version>.exe` from the [latest release](https://github.com/hangoverhangoverhangover/Unison/releases/latest).
+2. Run it. The installer isn't code-signed, so Windows may show **"Windows protected your PC"**: click **More info → Run anyway**.
+3. Pick where to install it, then open Unison from the Start menu or the desktop shortcut.
+
+Then connect your accounts:
+
+- **Spotify** needs a free Client ID of your own (5 minutes, see [Setting up Spotify](#setting-up-spotify)) and **Spotify Premium**.
+- **SoundCloud** works with your normal login (see [Setting up SoundCloud](#setting-up-soundcloud)).
+- **Local files:** **Settings → Music folders → Add folder**.
+- **Discord status:** turn on **Settings → General → Show on Discord**.
+
+The SoundCloud downloader and the tag editor are included; nothing else to install. Needs **Windows 10 or 11**.
+
+---
+
+## Run from source
+
+Only needed if you want to change the code. The installer needs none of this.
+
+### Requirements
 
 - **Windows 10 or 11.**
 - **Node.js 22** and **Python 3.7+** (Python is only for the one-time Widevine signing step below).
 - A free **castLabs EVS account** (also for that signing step).
 - For Spotify: **Spotify Premium**, on every account that plays music.
 - Optional: `yt-dlp.exe` and `ffmpeg.exe` for the SoundCloud downloader and the tag editor.
-
----
-
-## Getting started
 
 ### 1. Install
 
@@ -154,7 +170,7 @@ Spotify only lets an app play music for accounts its owner has allowed, so you r
 
 4. Under **Which API/SDKs are you planning to use?**, tick **Web API** and **Web Playback SDK**. Save.
 5. Open the app's **Settings → User Management** and add every Spotify account that will use it (name and the account's email). The app is in Development Mode, which allows **up to 5 people**.
-6. Copy the **Client ID** into `SPOTIFY_CLIENT_ID` in `.env`, or paste it in the app under **Settings → Accounts → Spotify → Use your own Client ID**. There's no client secret to copy: the login uses PKCE.
+6. Copy the **Client ID** and paste it in the app under **Settings → Accounts → Spotify → Use your own Client ID**, then restart when it asks. (Running from source, you can put it in `SPOTIFY_CLIENT_ID` in `.env` instead.) There's no client secret to copy: the login uses PKCE.
 7. Start the app, open **Settings → Accounts** and press **Connect** next to Spotify. Your browser opens Spotify's consent page; approve it and the app shows your account.
 
 Good to know:
@@ -190,6 +206,10 @@ SoundCloud search and playback also work without logging in; likes, playlists, t
 ## Optional extras
 
 ### Discord status
+
+With the installer, turn on **Settings → General → Show on Discord** and keep the Discord desktop app running. That's all.
+
+Running from source, register your own Discord application:
 
 1. Create an application in the [Discord Developer Portal](https://discord.com/developers/applications).
 2. Under **Rich Presence → Art Assets**, upload the images from `design/discord-assets/` with the same names (`app_icon`, `spotify`, `soundcloud`, `local`).
