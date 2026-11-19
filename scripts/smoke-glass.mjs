@@ -419,6 +419,30 @@ try {
     await shot('artwork-details')
   }
 
+  if (want('queue')) {
+    // Start mid-list: Previous reaches the song above; Shuffle queues the whole list.
+    await go('Local Files')
+    await win.getByRole('radio', { name: 'Unsorted' }).click()
+    await win.getByText('Filler 4').first().dblclick()
+    await win.waitForTimeout(1200)
+    await win.getByRole('button', { name: 'Previous', exact: true }).click()
+    await win.waitForTimeout(1200)
+    const titleAfterPrev = await win.locator('footer p').first().textContent()
+    await win.locator('main').getByRole('button', { name: 'Shuffle play' }).click()
+    await win.waitForTimeout(1200)
+    const q = await win.evaluate(() => {
+      const raw = document.querySelectorAll('[aria-label="Playing"]').length
+      return raw
+    })
+    await win.getByRole('button', { name: 'Queue, details and Jam' }).click()
+    await win.getByRole('tab', { name: 'Queue' }).click()
+    await win.waitForTimeout(600)
+    const upcoming = await win.locator('aside li, aside [role=listitem]').count()
+    console.log('queue:', JSON.stringify({ titleAfterPrev, upcoming, playingMarks: q }))
+    await shot('artwork-queue-shuffled')
+    await win.getByRole('button', { name: 'Shuffle', exact: true }).click()
+  }
+
   if (want('layout')) {
     // Drag the sidebar edge left past the snap point: it becomes the icon rail.
     await go('Local Files')

@@ -65,8 +65,12 @@ export function contextSize(state: QueueState): number {
 }
 
 /**
- * Replace the context. current = tracks[startIndex], upcoming = the tracks after it
- * (shuffled if shuffle is on). Tracks before startIndex are dropped. History is cleared.
+ * Replace the context with a whole list, starting at tracks[startIndex]. The songs
+ * above the start stay part of it (as earlier songs), like Spotify:
+ * - shuffle off: history = the songs above, upcoming = the songs below. Previous
+ *   reaches the songs above, and repeat 'all' wraps to the top of the list.
+ * - shuffle on: the start song plays first, then every other song in the list,
+ *   above and below, shuffled.
  */
 export function playTracks(
   state: QueueState,
@@ -76,16 +80,18 @@ export function playTracks(
 ): QueueState {
   if (tracks.length === 0) return { ...emptyQueue, shuffle: state.shuffle }
   const start = Math.min(Math.max(0, Math.floor(startIndex) || 0), tracks.length - 1)
-  const items = toItems(tracks.slice(start), deps)
-  const [current, ...rest] = items as [QueueItem, ...QueueItem[]]
+  const items = toItems(tracks, deps)
+  const current = items[start] as QueueItem
+  const before = items.slice(0, start)
+  const after = items.slice(start + 1)
   if (!state.shuffle) {
-    return { ...emptyQueue, current, upcoming: rest }
+    return { ...emptyQueue, history: before, current, upcoming: after }
   }
   return {
     ...emptyQueue,
     shuffle: true,
     current,
-    upcoming: shuffleItems(rest, deps?.rng),
+    upcoming: shuffleItems([...before, ...after], deps?.rng),
     order: items.map((i) => i.uid)
   }
 }
@@ -195,10 +201,10 @@ export function previous(state: QueueState): QueueState | null {
 }
 
 /**
- * Shuffle on: Fisher-Yates the upcoming items, remembering the original order.
- * Shuffle off: restore the original relative order of the items still upcoming.
- * Items queued with playNext while shuffled stay at the front (in their current
- * order); items added with addToQueue while shuffled keep their appended position.
+ * Shuffle on: Fisher-Yates every song except the current one (earlier songs too),
+ * remembering the list order. Shuffle off: list order around the current song (see
+ * below). Items queued with playNext while shuffled stay at the front; items added
+ * with addToQueue while shuffled keep their appended position.
  */
 export function setShuffle(state: QueueState, on: boolean, deps?: QueueDeps): QueueState {
   if (on === state.shuffle) return state
@@ -208,28 +214,46 @@ export function setShuffle(state: QueueState, on: boolean, deps?: QueueDeps): Qu
       ...(state.current ? [state.current.uid] : []),
       ...state.upcoming.map((i) => i.uid)
     ]
+    // The whole list except the current song: earlier songs are mixed in too.
     return {
       ...state,
       shuffle: true,
-      upcoming: shuffleItems(state.upcoming, deps?.rng),
+      history: [],
+      upcoming: shuffleItems([...state.history, ...state.upcoming], deps?.rng),
       order,
       pinned: []
     }
   }
+  // Shuffle off: back to list order around the current song. Songs after it play
+  // next; songs before it become earlier songs (Previous, and the wrap with repeat
+  // 'all'). Play next items stay at the front; items with no known place go last.
   const pinnedSet = new Set(state.pinned)
   const rank = new Map(state.order.map((uid, i) => [uid, i]))
   const front = state.upcoming.filter((i) => pinnedSet.has(i.uid))
-  const rest = state.upcoming
-    .filter((i) => !pinnedSet.has(i.uid))
-    .map((item, idx) => ({ item, idx, r: rank.get(item.uid) }))
-    .sort((a, b) => {
-      // Unknown uids (shouldn't happen) go last, keeping their current order.
-      const ra = a.r ?? Number.MAX_SAFE_INTEGER
-      const rb = b.r ?? Number.MAX_SAFE_INTEGER
-      return ra - rb || a.idx - b.idx
-    })
-    .map((x) => x.item)
-  return { ...state, shuffle: false, upcoming: [...front, ...rest], order: [], pinned: [] }
+  const pool = [...state.history, ...state.upcoming].filter((i) => !pinnedSet.has(i.uid))
+  const known = pool
+    .filter((i) => rank.has(i.uid))
+    .sort((a, b) => rank.get(a.uid)! - rank.get(b.uid)!)
+  const unknown = pool.filter((i) => !rank.has(i.uid))
+  const at = state.current ? rank.get(state.current.uid) : undefined
+  if (at === undefined) {
+    return {
+      ...state,
+      shuffle: false,
+      upcoming: [...front, ...known, ...unknown],
+      history: [],
+      order: [],
+      pinned: []
+    }
+  }
+  return {
+    ...state,
+    shuffle: false,
+    history: known.filter((i) => rank.get(i.uid)! < at),
+    upcoming: [...front, ...known.filter((i) => rank.get(i.uid)! > at), ...unknown],
+    order: [],
+    pinned: []
+  }
 }
 
 function dropPin(pinned: string[], uid: string): string[] {

@@ -36,11 +36,11 @@ function deps(seed = 1): Q.QueueDeps {
 }
 
 describe('playTracks', () => {
-  it('sets current to startIndex and upcoming to the tracks after it', () => {
+  it('sets current to startIndex, upcoming to the tracks after it, history to those before', () => {
     const s = Q.playTracks(Q.emptyQueue, tracks(1, 2, 3, 4), 1, deps())
     expect(cur(s)).toBe('2')
     expect(ids(s.upcoming)).toEqual(['3', '4'])
-    expect(s.history).toEqual([])
+    expect(ids(s.history)).toEqual(['1'])
   })
 
   it('clamps the start index and handles empty input', () => {
@@ -238,12 +238,14 @@ describe('shuffle', () => {
     expect(off.shuffle).toBe(false)
   })
 
-  it('restores the order of only the items still upcoming', () => {
+  it('after playing a few shuffled songs, shuffle off continues in list order from the current one', () => {
     let s = Q.setShuffle(start(), true, { rng: seededRng(5) })
-    const played = [s.upcoming[0]!.track.nativeId, s.upcoming[1]!.track.nativeId]
     s = Q.next(Q.next(s, 'off')!, 'off')!
+    const at = Number(cur(s))
     const off = Q.setShuffle(s, false)
-    expect(ids(off.upcoming)).toEqual(ordered.filter((id) => !played.includes(id)))
+    const all = ['1', ...ordered]
+    expect(ids(off.upcoming)).toEqual(all.filter((id) => Number(id) > at))
+    expect(ids(off.history)).toEqual(all.filter((id) => Number(id) < at))
   })
 
   it('keeps items added while shuffled, at the end of the restored order', () => {
@@ -275,5 +277,63 @@ describe('shuffle', () => {
   it('shuffleItems is a permutation', () => {
     const out = Q.shuffleItems([1, 2, 3, 4, 5], seededRng(1))
     expect([...out].sort()).toEqual([1, 2, 3, 4, 5])
+  })
+})
+
+describe('whole list stays in play (QoL 3)', () => {
+  const list = tracks(1, 2, 3, 4, 5, 6)
+
+  it('starting mid-list keeps the songs above as earlier songs', () => {
+    const s = Q.playTracks(Q.emptyQueue, list, 3, deps())
+    expect(cur(s)).toBe('4')
+    expect(ids(s.upcoming)).toEqual(['5', '6'])
+    expect(ids(s.history)).toEqual(['1', '2', '3'])
+  })
+
+  it('previous from the first song played goes to the song above it', () => {
+    const s = Q.previous(Q.playTracks(Q.emptyQueue, list, 3, deps()))
+    expect(cur(s)).toBe('3')
+    expect(ids(s!.upcoming)).toEqual(['4', '5', '6'])
+  })
+
+  it('repeat all wraps to the top of the list', () => {
+    const d = deps()
+    let s = Q.playTracks(Q.emptyQueue, list, 3, d)
+    s = Q.next(Q.next(s, 'all', d)!, 'all', d)! // 5, 6
+    s = Q.next(s, 'all', d)!
+    expect(cur(s)).toBe('1')
+    expect(ids(s.upcoming)).toEqual(['2', '3', '4', '5', '6'])
+  })
+
+  it('shuffled start queues every other song exactly once, above and below', () => {
+    const on = Q.setShuffle(Q.emptyQueue, true)
+    const s = Q.playTracks(on, list, 3, deps(7))
+    expect(cur(s)).toBe('4')
+    expect(ids(s.upcoming).sort()).toEqual(['1', '2', '3', '5', '6'])
+    expect(s.history).toEqual([])
+  })
+
+  it('shuffle on mid-list mixes in the songs above too', () => {
+    const s = Q.setShuffle(Q.playTracks(Q.emptyQueue, list, 2, deps()), true, deps(5))
+    expect(cur(s)).toBe('3')
+    expect(ids(s.upcoming).sort()).toEqual(['1', '2', '4', '5', '6'])
+    expect(s.history).toEqual([])
+  })
+
+  it('shuffle off returns to list order after the current song; the rest come on wrap', () => {
+    const on = Q.setShuffle(Q.emptyQueue, true)
+    let s = Q.playTracks(on, list, 3, deps(7))
+    s = Q.setShuffle(s, false)
+    expect(cur(s)).toBe('4')
+    expect(ids(s.upcoming)).toEqual(['5', '6'])
+    expect(ids(s.history)).toEqual(['1', '2', '3'])
+  })
+
+  it('songs queued with Play next stay first through shuffle off', () => {
+    const on = Q.setShuffle(Q.emptyQueue, true)
+    let s = Q.playTracks(on, list, 3, deps(7))
+    s = Q.playNext(s, tracks('a'))
+    s = Q.setShuffle(s, false)
+    expect(ids(s.upcoming)).toEqual(['a', '5', '6'])
   })
 })
