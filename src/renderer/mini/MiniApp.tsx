@@ -1,7 +1,8 @@
-import { Maximize2, Pause, Play, SkipBack, SkipForward, X } from 'lucide-react'
+import { Maximize2, MicVocal, Pause, Play, SkipBack, SkipForward, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { bindAppearance } from '@renderer/state/appearance'
 import type { MiniCommand, MiniState } from '@shared/match'
+import { activeLine, type LyricLine } from '@shared/lyrics'
 import { formatTime } from '@renderer/lib/format'
 import { effect } from '@renderer/styles/tokens'
 import SourceBadge from '@renderer/components/SourceBadge'
@@ -81,6 +82,42 @@ function WindowButton({
   )
 }
 
+/** The synced lyric line playing now, or null (no lyrics, not synced, or between lines). */
+function useMiniLyric(state: MiniState | null): string | null {
+  // Lyrics are kept with the id of the song they belong to, so a new song shows none
+  // until its own arrive.
+  const [loaded, setLoaded] = useState<{ id: string; lines: LyricLine[] | null } | null>(null)
+  const [text, setText] = useState<string | null>(null)
+  const track = state?.track ?? null
+  const id = track?.id ?? null
+  useEffect(() => {
+    if (!track) return
+    let live = true
+    window.api
+      .invoke('lyrics:get', track)
+      .then((r) => live && setLoaded({ id: track.id, lines: r.synced }))
+      .catch(() => {})
+    return () => {
+      live = false
+    }
+    // Only refetch when the song changes, not on every position update.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id])
+  const lines = loaded && loaded.id === id ? loaded.lines : null
+  useEffect(() => {
+    if (!state || !lines?.length) return
+    let raf = 0
+    const tick = (): void => {
+      const i = activeLine(lines, livePosition(state, Date.now()))
+      setText(i >= 0 ? lines[i]!.text || null : null)
+      if (state.status === 'playing') raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [state, lines])
+  return lines?.length ? text : null
+}
+
 /** The mini player window: artwork, title, controls and progress. Drag it anywhere. */
 export default function MiniApp(): React.JSX.Element {
   useEffect(() => bindAppearance(), [])
@@ -91,6 +128,7 @@ export default function MiniApp(): React.JSX.Element {
     return window.api.on('mini:state', setState)
   }, [])
 
+  const lyric = useMiniLyric(state)
   const track = state?.track ?? null
   const playing = state?.status === 'playing' || state?.status === 'loading'
   const art = track?.artworkUrl
@@ -115,14 +153,25 @@ export default function MiniApp(): React.JSX.Element {
         <div className="flex min-w-0 flex-1 flex-col justify-between self-stretch pb-2">
           <div className="min-w-0 pr-14">
             <p className="truncate text-md font-bold">{track?.title ?? 'Nothing playing'}</p>
-            <p className="flex items-center gap-1.5 text-sm text-text-subdued">
-              {track && <SourceBadge provider={track.provider} />}
-              <span className="truncate">
-                {track
-                  ? track.artists.join(', ') || 'Unknown artist'
-                  : 'Play something in the main window'}
-              </span>
-            </p>
+            {lyric ? (
+              // The current lyric line takes the artist's place while it plays.
+              <p
+                className="flex items-center gap-1.5 text-sm font-semibold text-text"
+                title={lyric}
+              >
+                <MicVocal size={12} className="flex-none text-accent" />
+                <span className="truncate">{lyric}</span>
+              </p>
+            ) : (
+              <p className="flex items-center gap-1.5 text-sm text-text-subdued">
+                {track && <SourceBadge provider={track.provider} />}
+                <span className="truncate">
+                  {track
+                    ? track.artists.join(', ') || 'Unknown artist'
+                    : 'Play something in the main window'}
+                </span>
+              </p>
+            )}
           </div>
           <div className="flex items-center gap-1">
             <button

@@ -5,6 +5,7 @@ import type { DownloadItem, DownloaderStatus, DownloadProgress } from './downloa
 import type { FindResult, MiniCommand, MiniState } from './match'
 import type { JamCapabilities, JamCommand, JamStatus } from './jam'
 import type { LastfmStatus, ScrobbleReport } from './lastfm'
+import type { LyricsResult } from './lyrics'
 import type {
   ListeningStats,
   PlayReport,
@@ -113,6 +114,11 @@ export interface IpcInvokeMap {
   'lastfm:setScrobbleSpotify': (on: boolean) => LastfmStatus
   'lastfm:nowPlaying': (track: Track) => void
   'lastfm:scrobble': (report: ScrobbleReport) => void
+  /** Lyrics (QoL 3): the user's own, else LRCLIB (cached). */
+  'lyrics:get': (track: Track) => LyricsResult
+  /** Save the user's own lyrics (LRC with time stamps, or plain text); local only. */
+  'lyrics:save': (track: Track, text: string) => LyricsResult
+  'lyrics:delete': (track: Track) => LyricsResult
   /** Newest first, one entry per play. */
   'history:recent': (limit: number) => RecentPlay[]
   'history:smart': (kind: SmartPlaylistKind) => SmartPlaylist
@@ -384,6 +390,9 @@ const invokeChannels = {
   'lastfm:setScrobbleSpotify': true,
   'lastfm:nowPlaying': true,
   'lastfm:scrobble': true,
+  'lyrics:get': true,
+  'lyrics:save': true,
+  'lyrics:delete': true,
   'history:recent': true,
   'history:smart': true,
   'history:stats': true,

@@ -463,6 +463,50 @@ try {
     )
   }
 
+  if (want('lyrics')) {
+    // A made-up song (no LRCLIB match): add lyrics, tap each line in, then see the
+    // lyrics page, the bar above the play bar and the mini player line.
+    await go('Local Files')
+    await win.getByRole('radio', { name: 'Unsorted' }).click()
+    await win.getByText('Glasshouse').first().dblclick()
+    await win.waitForTimeout(800)
+    await win.getByRole('button', { name: 'Lyrics', exact: true }).click()
+    await win.waitForTimeout(2500)
+    await shot('artwork-lyrics-none')
+    await win.locator('main').getByRole('button', { name: 'Add lyrics' }).click()
+    await win
+      .getByRole('textbox', { name: 'Lyrics' })
+      .fill(
+        [
+          'Light through the glass',
+          'Every window a door',
+          'We were never alone',
+          'Glasshouse'
+        ].join('\n')
+      )
+    await win.getByRole('button', { name: 'Sync line by line' }).click()
+    for (let i = 0; i < 4; i++) {
+      await win.waitForTimeout(1500)
+      await win.keyboard.press('Space')
+    }
+    await win.waitForTimeout(300)
+    await shot('artwork-lyrics-editor-review')
+    await win.getByRole('button', { name: 'Save', exact: true }).click()
+    await win.waitForTimeout(500)
+    await shot('artwork-lyrics-view')
+    await go('Local Files')
+    await shot('artwork-lyrics-bar')
+    await win.evaluate(() => window.api.invoke('mini:toggle'))
+    await win.waitForTimeout(2500)
+    const mini = app.windows().find((w) => w !== win)
+    if (mini) {
+      await mini.waitForTimeout(1500)
+      await mini.screenshot({ path: `${out}/artwork-lyrics-mini.png` })
+      console.log('shot artwork-lyrics-mini', await mini.locator('p').allTextContents())
+      await win.evaluate(() => window.api.invoke('mini:toggle'))
+    } else console.log('no mini window')
+  }
+
   if (want('layout')) {
     // Drag the sidebar edge left past the snap point: it becomes the icon rail.
     await go('Local Files')

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import * as Slider from '@radix-ui/react-slider'
 import { AnimatePresence, motion } from 'motion/react'
 import {
+  MicVocal,
   PanelRight,
   Pause,
   Play,
@@ -241,6 +242,9 @@ function Volume({ mode }: { mode: PlayBarLayout['volume'] }): React.JSX.Element 
 export default function PlayBar(): React.JSX.Element {
   const panelOpen = useUi((s) => s.panelOpen)
   const togglePanel = useUi((s) => s.togglePanel)
+  const onLyrics = useUi((s) => s.view === 'lyrics')
+  const setView = useUi((s) => s.setView)
+  const back = useUi((s) => s.back)
   const jamOn = useJam((s) => s.status.state !== 'off')
   const jamCount = useJam((s) => s.status.room?.participants.length ?? 0)
   const barRef = useRef<HTMLElement>(null)
@@ -260,6 +264,19 @@ export default function PlayBar(): React.JSX.Element {
         </div>
       </div>
       <div className="flex items-center justify-end gap-1">
+        <IconButton
+          label={onLyrics ? 'Hide lyrics' : 'Lyrics'}
+          active={onLyrics}
+          onClick={() =>
+            onLyrics
+              ? useUi.getState().history.length
+                ? back()
+                : setView('local')
+              : setView('lyrics')
+          }
+        >
+          <MicVocal size={18} />
+        </IconButton>
         <IconButton
           label={panelOpen ? 'Hide panel' : 'Queue, details and Jam'}
           active={panelOpen || jamOn}

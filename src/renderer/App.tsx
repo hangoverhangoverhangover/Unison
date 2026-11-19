@@ -39,6 +39,10 @@ import TrackView from './views/TrackView'
 import LibraryView from './views/LibraryView'
 import SmartView from './views/SmartView'
 import StatsView from './views/StatsView'
+import LyricsView from './views/LyricsView'
+import LyricsBar from './components/LyricsBar'
+import LyricsEditor from './components/LyricsEditor'
+import { bindLyrics } from './state/lyrics'
 import { bindHistory } from './playback/historyBridge'
 import { bindLastfm } from './playback/lastfmBridge'
 import { bindHistoryEvents } from './state/history'
@@ -81,6 +85,7 @@ export default function App(): React.JSX.Element {
   useEffect(() => bindTray(playback), [])
   useEffect(() => bindHistory(playback), [])
   useEffect(() => bindLastfm(playback), [])
+  useEffect(() => bindLyrics(playback), [])
   useEffect(() => bindHistoryEvents(), [])
   useEffect(() => bindMiniBridge(playback, (open) => useUi.getState().setMiniOpen(open)), [])
   useEffect(() => bindDownloadsEvents(), [])
@@ -134,6 +139,8 @@ export default function App(): React.JSX.Element {
               <FollowingView />
             ) : view === 'duplicates' ? (
               <DuplicatesView />
+            ) : view === 'lyrics' ? (
+              <LyricsView />
             ) : view === 'stats' ? (
               <StatsView />
             ) : view.startsWith('smart:') ? (
@@ -177,12 +184,14 @@ export default function App(): React.JSX.Element {
           )}
         </AnimatePresence>
         {/* Floats over the bottom of every panel; each panel's list scrolls under it. */}
+        <LyricsBar />
         <PlayBar />
       </div>
       <ZoomToast />
       <FindDialog />
       <TagEditorDialog />
       <TransferDialog />
+      <LyricsEditor />
       {/* Last, so quick search opened from inside a dialog shows on top of it. */}
       <QuickSearch />
     </div>
