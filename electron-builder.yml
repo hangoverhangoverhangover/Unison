@@ -30,6 +30,14 @@ extraResources:
       - yt-dlp.exe
       - ffmpeg.exe
 
+# Auto updates: the installed app reads new versions (latest.yml) from GitHub Releases.
+# `npm run release` uploads the installer, its .blockmap and latest.yml (needs GH_TOKEN).
+publish:
+  provider: github
+  owner: hangoverhangoverhangover
+  repo: Unison
+  releaseType: draft
+
 # Widevine needs a VMP signature on the final exe (see scripts/vmp-sign.cjs).
 afterSign: scripts/vmp-sign.cjs
 

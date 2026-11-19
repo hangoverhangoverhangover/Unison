@@ -51,13 +51,20 @@
 
 - **Jam:** start a session, share the code, and everyone adds to one queue. Each person plays on their own accounts, and playback stays in sync across Spotify and SoundCloud.
 
+### Lyrics and scrobbling
+
+- **Synced lyrics** from LRCLIB: a full lyrics page that follows the song (click a line to jump there), the current line above the play bar and in the mini player.
+- **Your own lyrics:** paste them and tap along as the song plays to time each line, and each word if you like. They stay on your computer.
+- **Last.fm scrobbling** with your own Last.fm API account (Settings → Accounts → Last.fm). Works offline: scrobbles wait and send later.
+
 ### Look and feel
 
-- **Frosted glass** over a colour wash taken from the playing song's artwork, or fixed **Dark** and **Light** themes.
+- **Frosted glass** over a colour wash taken from the playing song's artwork, fixed **Dark** and **Light** themes, or a **Custom** theme: your own colours, gradient or picture background, glass blur and corners, and font. Themes save to a file you can share.
 - A floating play bar the page scrolls under, a resizable sidebar that folds into an icon strip, and a tabbed side panel (Details, Queue, Jam), also resizable.
 - **Whole-app zoom** (`Ctrl +` / `Ctrl −` / `Ctrl 0`, or Ctrl + mouse wheel).
 - **Sound:** volume levelling, crossfade and an equalizer for SoundCloud and local files.
 - **Discord status:** shows what you're playing, with artwork and a progress bar.
+- **Automatic updates** from GitHub Releases, installed when you restart.
 
 ---
 
@@ -280,6 +287,7 @@ The full list is also in **Settings → Shortcuts**.
 | `npm run build`                | Typecheck and build to `out/`                                   |
 | `node scripts/smoke-glass.mjs` | Screenshots of every page in each theme (after `npm run build`) |
 | `npm run dist`                 | Build the Windows installer into `dist/` (see below)            |
+| `npm run release`              | Build the installer and upload it to a GitHub release (below)   |
 
 ### Building the installer
 
@@ -288,6 +296,15 @@ The full list is also in **Settings → Shortcuts**.
 3. Run `npm run dist`. The installer is `dist/Unison-Setup-<version>.exe`; `dist/win-unpacked/` is the same app without an installer.
 
 The build VMP-signs `Unison.exe` after packaging, which Spotify playback needs. `SKIP_VMP=1 npm run dist` builds without signing (Spotify won't play in that build).
+
+### Publishing a release (auto updates)
+
+The installed app checks GitHub Releases for new versions, downloads them in the background and installs them on restart (Settings → General → Updates).
+
+1. Raise `version` in `package.json` (updates only go to a higher version).
+2. Set `GH_TOKEN` to a GitHub token that can create releases on this repository, for this terminal only.
+3. Run `npm run release`. It builds and VMP-signs like `npm run dist`, then uploads `Unison-Setup-<version>.exe`, its `.blockmap` and `latest.yml` to a draft release.
+4. Publish the draft on GitHub. Installed apps only see published releases.
 
 Release builds include only public identifiers from `.env`: the Discord application ID and the Jam relay URL. Spotify and SoundCloud keys are left out, so everyone who installs the app adds their own Spotify Client ID in Settings → Spotify.
 

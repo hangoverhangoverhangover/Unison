@@ -26,6 +26,7 @@ import { registerHistory } from './history'
 import { registerLastfm } from './lastfm'
 import { registerLyrics } from './lyrics'
 import { registerTheme } from './theme'
+import { registerUpdates } from './updates'
 import { registerSettings } from './settings'
 import { registerTray } from './tray'
 import { registerTransfer } from './transfer'
@@ -220,6 +221,7 @@ app.whenReady().then(async () => {
   const lastfm = registerLastfm({ db, getWebContents })
   const lyrics = registerLyrics({ db })
   const theme = registerTheme({ db, getWebContents })
+  const updates = registerUpdates({ getWebContents })
   const transfer = registerTransfer({
     db,
     getProvider: (p) => providers[p],
@@ -284,6 +286,7 @@ app.whenReady().then(async () => {
     () => lastfm.dispose(),
     () => lyrics.dispose(),
     () => theme.dispose(),
+    () => updates.dispose(),
     () => settings.dispose(),
     () => tray.dispose(),
     () => transfer.dispose(),

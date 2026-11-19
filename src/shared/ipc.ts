@@ -6,6 +6,7 @@ import type { FindResult, MiniCommand, MiniState } from './match'
 import type { JamCapabilities, JamCommand, JamStatus } from './jam'
 import type { LastfmStatus, ScrobbleReport } from './lastfm'
 import type { LyricsResult } from './lyrics'
+import type { UpdateStatus } from './updates'
 import type {
   ListeningStats,
   PlayReport,
@@ -129,6 +130,13 @@ export interface IpcInvokeMap {
   'theme:exportFile': (text: string) => boolean
   /** The text of a theme file the user picks, or null when cancelled. */
   'theme:importFile': () => string | null
+
+  // QoL 3: app updates
+  'updates:getStatus': () => UpdateStatus
+  /** Check GitHub Releases now; returns the status after the check. */
+  'updates:check': () => UpdateStatus
+  /** Restart into a downloaded update. */
+  'updates:install': () => void
   /** Newest first, one entry per play. */
   'history:recent': (limit: number) => RecentPlay[]
   'history:smart': (kind: SmartPlaylistKind) => SmartPlaylist
@@ -324,6 +332,7 @@ export interface IpcEventMap {
   /** Plays were recorded or history cleared. */
   'history:changed': null
   'lastfm:status': LastfmStatus
+  'updates:status': UpdateStatus
   /** transfer:plan progress. */
   'transfer:progress': { done: number; total: number }
   'prefs:changed': AppPrefs
@@ -407,6 +416,9 @@ const invokeChannels = {
   'theme:setImage': true,
   'theme:exportFile': true,
   'theme:importFile': true,
+  'updates:getStatus': true,
+  'updates:check': true,
+  'updates:install': true,
   'history:recent': true,
   'history:smart': true,
   'history:stats': true,
@@ -497,6 +509,7 @@ const eventChannels = {
   'jam:status': true,
   'history:changed': true,
   'lastfm:status': true,
+  'updates:status': true,
   'transfer:progress': true,
   'prefs:changed': true,
   'mini:open': true,

@@ -11,6 +11,7 @@ import { BehaviourSection, ShortcutsSection } from '@renderer/components/Behavio
 import SoundSection from '@renderer/components/SoundSection'
 import AppearanceSection from '@renderer/components/AppearanceSection'
 import LastfmSection from '@renderer/components/LastfmSection'
+import UpdatesSection from '@renderer/components/UpdatesSection'
 import { useElementWidth } from '@renderer/lib/useElementWidth'
 import JamSection from '@renderer/components/JamSection'
 import ActivePill from '@renderer/components/ActivePill'
@@ -209,6 +210,7 @@ export default function SettingsView(): React.JSX.Element {
             </Group>
             <Group id="general">
               <BehaviourSection />
+              <UpdatesSection />
             </Group>
             <Group id="jam">
               <JamSection />

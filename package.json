@@ -19,6 +19,7 @@
     "build:unpack": "npm run build && electron-builder --dir",
     "build:win": "npm run build && electron-builder --win",
     "dist": "npm run typecheck && cross-env UNISON_RELEASE=1 electron-vite build && electron-builder --win",
+    "release": "npm run typecheck && cross-env UNISON_RELEASE=1 electron-vite build && electron-builder --win --publish always",
     "dist:dir": "npm run typecheck && cross-env UNISON_RELEASE=1 electron-vite build && electron-builder --win --dir",
     "smoke": "electron-vite build && node scripts/smoke.mjs",
     "vmp:sign": "python -m castlabs_evs.vmp sign-pkg node_modules/electron/dist"
@@ -28,6 +29,7 @@
     "@xhayper/discord-rpc": "^1.5.1",
     "better-sqlite3": "^13.0.3",
     "chokidar": "^6.0.0",
+    "electron-updater": "^6.8.11",
     "music-metadata": "^12.3.5"
   },
   "devDependencies": {
