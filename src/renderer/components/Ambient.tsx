@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { usePlayback } from '@renderer/state/player'
 import { useAppearance } from '@renderer/state/appearance'
 import { blur, motion as m } from '@renderer/styles/tokens'
+import { customBackdrop } from '@shared/theme'
 
 // Calm washes for when there's no artwork (or the theme doesn't follow it).
 const WASH = {
@@ -33,6 +34,8 @@ const WASH = {
  */
 export default function Ambient(): React.JSX.Element {
   const theme = useAppearance((s) => s.theme)
+  const custom = useAppearance((s) => s.customTheme)
+  const customImage = useAppearance((s) => s.customImage)
   const art = usePlayback((s) => s.current?.track.artworkUrl)
   const [failed, setFailed] = useState<string | undefined>()
   const src = theme === 'artwork' && art && art !== failed ? art : undefined
@@ -41,8 +44,30 @@ export default function Ambient(): React.JSX.Element {
     <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
       <div
         className="absolute inset-0"
-        style={{ background: theme === 'artwork' ? WASH.none : WASH[theme] }}
+        style={{
+          background:
+            theme === 'artwork'
+              ? WASH.none
+              : theme === 'custom'
+                ? customBackdrop(custom)
+                : WASH[theme]
+        }}
       />
+      {theme === 'custom' && custom.backdrop === 'image' && customImage && (
+        <>
+          <img
+            src={customImage}
+            alt=""
+            draggable={false}
+            className="absolute inset-0 size-full object-cover"
+          />
+          {/* Your shade over the picture, in the theme colour, so text stays readable. */}
+          <div
+            className="absolute inset-0"
+            style={{ background: custom.background, opacity: custom.imageDim }}
+          />
+        </>
+      )}
       <AnimatePresence initial={false}>
         {src && (
           <motion.img

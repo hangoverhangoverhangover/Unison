@@ -119,6 +119,16 @@ export interface IpcInvokeMap {
   /** Save the user's own lyrics (LRC with time stamps, or plain text); local only. */
   'lyrics:save': (track: Track, text: string) => LyricsResult
   'lyrics:delete': (track: Track) => LyricsResult
+
+  // QoL 3: custom theme
+  /** The custom theme's background image (a data URL), or null. */
+  'theme:getImage': () => string | null
+  /** Save (or with null, remove) the custom theme's background image. */
+  'theme:setImage': (image: string | null) => void
+  /** Save a theme file where the user picks; false when cancelled. */
+  'theme:exportFile': (text: string) => boolean
+  /** The text of a theme file the user picks, or null when cancelled. */
+  'theme:importFile': () => string | null
   /** Newest first, one entry per play. */
   'history:recent': (limit: number) => RecentPlay[]
   'history:smart': (kind: SmartPlaylistKind) => SmartPlaylist
@@ -393,6 +403,10 @@ const invokeChannels = {
   'lyrics:get': true,
   'lyrics:save': true,
   'lyrics:delete': true,
+  'theme:getImage': true,
+  'theme:setImage': true,
+  'theme:exportFile': true,
+  'theme:importFile': true,
   'history:recent': true,
   'history:smart': true,
   'history:stats': true,

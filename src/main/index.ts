@@ -25,6 +25,7 @@ import { registerMediaKeys } from './mediaKeys'
 import { registerHistory } from './history'
 import { registerLastfm } from './lastfm'
 import { registerLyrics } from './lyrics'
+import { registerTheme } from './theme'
 import { registerSettings } from './settings'
 import { registerTray } from './tray'
 import { registerTransfer } from './transfer'
@@ -193,14 +194,15 @@ app.whenReady().then(async () => {
   const mini = registerMini({
     db,
     getMainWindow: () => mainWindow,
-    getTheme: () => settings.getPrefs().theme
+    getTheme: () => settings.getPrefs().theme,
+    getCustomTheme: () => settings.getPrefs().customTheme
   })
   const mediaKeys = registerMediaKeys((key) => emit(getWebContents(), 'media:key', key))
   const settings = registerSettings({ db, getWebContents })
   // Caption buttons follow the theme (glass UI).
   settings.onPrefsChanged((prefs) => {
     if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.setTitleBarOverlay(overlayColors(prefs.theme))
+      mainWindow.setTitleBarOverlay(overlayColors(prefs.theme, prefs.customTheme))
     }
     // The mini player follows the theme too.
     emit(mini.webContents(), 'prefs:changed', prefs)
@@ -217,6 +219,7 @@ app.whenReady().then(async () => {
   const history = registerHistory({ db, getWebContents })
   const lastfm = registerLastfm({ db, getWebContents })
   const lyrics = registerLyrics({ db })
+  const theme = registerTheme({ db, getWebContents })
   const transfer = registerTransfer({
     db,
     getProvider: (p) => providers[p],
@@ -280,6 +283,7 @@ app.whenReady().then(async () => {
     () => history.dispose(),
     () => lastfm.dispose(),
     () => lyrics.dispose(),
+    () => theme.dispose(),
     () => settings.dispose(),
     () => tray.dispose(),
     () => transfer.dispose(),
@@ -295,7 +299,7 @@ app.whenReady().then(async () => {
 
   await waitForWidevine()
   const openMain = (): void => {
-    mainWindow = createMainWindow(settings.getPrefs().theme)
+    mainWindow = createMainWindow(settings.getPrefs().theme, settings.getPrefs().customTheme)
     const win = mainWindow
     // Close to tray: hide instead of closing, so playback keeps going.
     win.on('close', (e) => tray.onMainClose(e, win))

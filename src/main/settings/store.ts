@@ -17,6 +17,7 @@ import {
   type RepeatMode,
   type SessionSnapshot
 } from '@shared/playback'
+import { validateCustomTheme } from '@shared/theme'
 import type { Track } from '@shared/types'
 import type { Db } from '../db'
 
@@ -201,6 +202,7 @@ const VALIDATORS: { [K in keyof AppPrefs]: (v: unknown) => AppPrefs[K] } = {
     return v as JamUnplayable
   },
   theme: checkOneOf<Theme>('theme', THEMES),
+  customTheme: validateCustomTheme,
   zoom: checkNumber('zoom', clampZoom),
   sidebarWidth: checkNumber('sidebarWidth', clampSidebarWidth),
   rightPanelWidth: checkNumber('rightPanelWidth', clampRightPanelWidth),

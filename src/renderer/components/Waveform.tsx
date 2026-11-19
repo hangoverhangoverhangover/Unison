@@ -5,7 +5,7 @@ import { playback } from '@renderer/playback/controller'
 import { formatTime } from '@renderer/lib/format'
 import { color } from '@renderer/styles/tokens'
 import { bars, clusterMarkers } from '@renderer/lib/waveform'
-import { useAppearance } from '@renderer/state/appearance'
+import { useAppearance, useLightTheme } from '@renderer/state/appearance'
 
 const BAR = 2
 const GAP = 1
@@ -44,7 +44,7 @@ export default function Waveform({
   }, [])
 
   const peaks = useMemo(() => bars(samples, Math.floor(width / (BAR + GAP))), [samples, width])
-  const theme = useAppearance((s) => s.theme)
+  const light = useLightTheme()
   // CSS zoom scales the canvas on screen; draw at the zoomed size so bars stay sharp.
   const zoom = useAppearance((s) => s.zoom)
 
@@ -59,7 +59,7 @@ export default function Waveform({
     if (!ctx) return
     ctx.scale(dpr, dpr)
     // Unplayed bars follow the theme (dark bars on Light glass).
-    const rest = theme === 'light' ? 'rgba(20, 21, 26, 0.26)' : 'rgba(255, 255, 255, 0.3)'
+    const rest = light ? 'rgba(20, 21, 26, 0.26)' : 'rgba(255, 255, 255, 0.3)'
     let lastPlayed = -1
     let raf = 0
     const draw = (played: number): void => {
@@ -81,7 +81,7 @@ export default function Waveform({
     }
     frame()
     return () => cancelAnimationFrame(raf)
-  }, [peaks, width, height, live, durationMs, theme, zoom])
+  }, [peaks, width, height, live, durationMs, light, zoom])
 
   // Comments that would overlap merge into one marker.
   const markers = useMemo(

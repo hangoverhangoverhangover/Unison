@@ -8,6 +8,7 @@ import type { Db } from './db'
 import { emit, handle } from './ipc'
 import { APP_ICON, loadRenderer, shellBackground } from './window'
 import type { Theme } from '@shared/config'
+import type { CustomTheme } from '@shared/theme'
 
 export const MINI_WIDTH = 380
 export const MINI_HEIGHT = 112
@@ -28,6 +29,7 @@ export interface MiniOptions {
   getMainWindow(): BrowserWindow | null
   /** Current theme, for the window colour before first paint. */
   getTheme(): Theme
+  getCustomTheme?(): CustomTheme
 }
 
 function readPosition(db: Db): { x: number; y: number } | undefined {
@@ -99,7 +101,7 @@ export function registerMini(opts: MiniOptions): {
       show: false,
       title: 'Unison',
       icon: APP_ICON,
-      backgroundColor: shellBackground(opts.getTheme()),
+      backgroundColor: shellBackground(opts.getTheme(), opts.getCustomTheme?.()),
       webPreferences: {
         preload: join(__dirname, '../preload/index.js'),
         contextIsolation: true,

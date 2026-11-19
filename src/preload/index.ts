@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { EVENT_CHANNELS, INVOKE_CHANNELS, type Api } from '@shared/ipc'
-import { BOOT_THEME_CHANNEL, THEMES, type Theme } from '@shared/config'
+import { BOOT_THEME_CHANNEL, THEMES, type BootTheme, type Theme } from '@shared/config'
+import { customThemeVars, validateCustomTheme } from '@shared/theme'
 
 // Typed IPC bridge. Only channels in the shared allowlists get through;
 // the renderer never sees ipcRenderer itself.
@@ -26,19 +27,24 @@ const api: Api = {
 
 contextBridge.exposeInMainWorld('api', api)
 
-// The saved theme, before the page paints, so a Light user never sees a dark flash.
-function bootTheme(): Theme {
+// The saved theme, before the page paints, so a Light (or custom) user never sees a
+// dark flash.
+function bootTheme(): BootTheme {
   try {
-    const t = ipcRenderer.sendSync(BOOT_THEME_CHANNEL) as unknown
-    return THEMES.includes(t as Theme) ? (t as Theme) : 'artwork'
+    const b = ipcRenderer.sendSync(BOOT_THEME_CHANNEL) as Partial<BootTheme> | null
+    const theme = THEMES.includes(b?.theme as Theme) ? (b!.theme as Theme) : 'artwork'
+    return theme === 'custom' ? { theme, custom: validateCustomTheme(b?.custom) } : { theme }
   } catch {
-    return 'artwork'
+    return { theme: 'artwork' }
   }
 }
-const theme = bootTheme()
-contextBridge.exposeInMainWorld('boot', { theme })
+const boot = bootTheme()
+contextBridge.exposeInMainWorld('boot', boot)
 const apply = (): void => {
-  document.documentElement.dataset.theme = theme
+  const root = document.documentElement
+  root.dataset.theme = boot.theme
+  if (boot.custom)
+    for (const [k, v] of Object.entries(customThemeVars(boot.custom))) root.style.setProperty(k, v)
 }
 if (document.documentElement) apply()
 else document.addEventListener('readystatechange', apply, { once: true })

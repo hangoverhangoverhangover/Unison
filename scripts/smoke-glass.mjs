@@ -507,6 +507,47 @@ try {
     } else console.log('no mini window')
   }
 
+  if (want('theme')) {
+    // Custom theme: pick it, change colours, glass and font, use a picture, then save
+    // the theme to a file and load it back.
+    await win.getByRole('button', { name: 'Settings', exact: true }).click()
+    const card = win.locator('section', { hasText: 'Appearance' }).first()
+    await card.scrollIntoViewIfNeeded()
+    await card.getByRole('radio', { name: /Custom/ }).click()
+    await win.waitForTimeout(400)
+    await card.getByLabel('Accent colour').fill('#ff5c8a')
+    await card.getByLabel('Background colour').fill('#0e2a2f')
+    await card.getByRole('radio', { name: 'Serif' }).click()
+    await card.getByRole('slider', { name: 'Corners' }).focus()
+    for (let i = 0; i < 8; i++) await win.keyboard.press('ArrowRight')
+    await card.scrollIntoViewIfNeeded()
+    await shot('artwork-theme-settings')
+    await go('Local Files')
+    await shot('artwork-theme-custom')
+    // A picture background (one of the generated covers).
+    await win.getByRole('button', { name: 'Settings', exact: true }).click()
+    await card.getByRole('radio', { name: 'Picture' }).click()
+    await win.locator('input[type=file]').setInputFiles(join(userData, '01.png'))
+    await win.waitForTimeout(1200)
+    await go('Local Files')
+    await shot('artwork-theme-picture')
+    // Export, change something, import: the saved accent comes back.
+    const file = join(userData, 'smoke.unisontheme')
+    await app.evaluate(({ dialog }, path) => {
+      dialog.showSaveDialog = async () => ({ canceled: false, filePath: path })
+      dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [path] })
+    }, file)
+    await win.getByRole('button', { name: 'Settings', exact: true }).click()
+    await card.getByRole('button', { name: 'Export theme' }).click()
+    await win.waitForTimeout(500)
+    await card.getByLabel('Accent colour').fill('#00ff00')
+    await card.getByRole('button', { name: 'Import theme' }).click()
+    await win.waitForTimeout(800)
+    const prefs = await win.evaluate(() => window.api.invoke('prefs:get'))
+    console.log('theme:', JSON.stringify({ theme: prefs.theme, accent: prefs.customTheme.accent }))
+    await setPrefs({ theme: 'artwork' })
+  }
+
   if (want('layout')) {
     // Drag the sidebar edge left past the snap point: it becomes the icon rail.
     await go('Local Files')

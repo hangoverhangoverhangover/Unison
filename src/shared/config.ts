@@ -1,4 +1,5 @@
 import type { JamUnplayable } from './jam'
+import { DEFAULT_CUSTOM_THEME, type CustomTheme } from './theme'
 /** App keys. Per app, not per user. Never sent to the renderer. */
 export interface AppKeys {
   spotifyClientId: string
@@ -28,8 +29,15 @@ export function toPublicConfig(keys: AppKeys): PublicConfig {
 }
 
 /** Window look: artwork-coloured glass, or fixed dark / light glass. */
-export type Theme = 'artwork' | 'dark' | 'light'
-export const THEMES: readonly Theme[] = ['artwork', 'dark', 'light']
+export type Theme = 'artwork' | 'dark' | 'light' | 'custom'
+export const THEMES: readonly Theme[] = ['artwork', 'dark', 'light', 'custom']
+
+/** What the preload reads before the first paint. */
+export interface BootTheme {
+  theme: Theme
+  /** Set when the theme is 'custom'. */
+  custom?: CustomTheme
+}
 
 /**
  * Synchronous preload-only channel: the saved theme, read before the first paint.
@@ -55,6 +63,8 @@ export interface AppPrefs {
   jamUnplayable: JamUnplayable
   /** Glass UI theme. */
   theme: Theme
+  /** Your own colours, background, glass and font (used when theme is 'custom'). */
+  customTheme: CustomTheme
   /** Whole-app zoom below the title bar, 0.7-1.5. */
   zoom: number
   /** Sidebar width in px; 72 is the icon rail. */
@@ -71,6 +81,7 @@ export const DEFAULT_APP_PREFS: AppPrefs = {
   jamName: '',
   jamUnplayable: 'match',
   theme: 'artwork',
+  customTheme: DEFAULT_CUSTOM_THEME,
   zoom: 1,
   sidebarWidth: 280,
   rightPanelWidth: 320,

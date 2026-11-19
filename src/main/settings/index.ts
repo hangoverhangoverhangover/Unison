@@ -1,6 +1,6 @@
 // session:*, prefs:* and audio:* IPC handlers (QoL round 2).
 import { ipcMain, type WebContents } from 'electron'
-import { BOOT_THEME_CHANNEL, type AppPrefs } from '@shared/config'
+import { BOOT_THEME_CHANNEL, type AppPrefs, type BootTheme } from '@shared/config'
 import type { InvokeChannel } from '@shared/ipc'
 import type { Db } from '../db'
 import { emit, handle } from '../ipc'
@@ -68,7 +68,12 @@ export function registerSettings(opts: SettingsOptions): {
   })
   // Read by the preload, synchronously, before the page paints (no theme flash).
   ipcMain.on(BOOT_THEME_CHANNEL, (e) => {
-    e.returnValue = readAppPrefs(db).theme
+    const prefs = readAppPrefs(db)
+    const boot: BootTheme =
+      prefs.theme === 'custom'
+        ? { theme: 'custom', custom: prefs.customTheme }
+        : { theme: prefs.theme }
+    e.returnValue = boot
   })
   handle('audio:get', () => readAudio(db))
   handle('audio:set', (settings) => writeAudio(db, settings))

@@ -3,7 +3,9 @@ import { Check } from 'lucide-react'
 import { useState } from 'react'
 import type { Theme } from '@shared/config'
 import { ZOOM, clampZoom } from '@shared/layout'
+import { customBackdrop, isLightColor } from '@shared/theme'
 import { useAppearance } from '@renderer/state/appearance'
+import CustomThemeEditor from './CustomThemeEditor'
 
 const THEMES: { theme: Theme; label: string; note: string; swatch: string }[] = [
   {
@@ -25,7 +27,9 @@ const THEMES: { theme: Theme; label: string; note: string; swatch: string }[] = 
     note: 'Bright white glass',
     swatch:
       'radial-gradient(70% 70% at 10% 0%, #b0beff, transparent 70%), radial-gradient(70% 70% at 95% 90%, #ffc4d6, transparent 70%), #eceff6'
-  }
+  },
+  // The swatch is drawn from your own theme.
+  { theme: 'custom', label: 'Custom', note: 'Your colours and glass', swatch: '' }
 ]
 
 /** Settings → Appearance: theme and whole-app zoom. */
@@ -33,6 +37,8 @@ export default function AppearanceSection(): React.JSX.Element {
   const theme = useAppearance((s) => s.theme)
   const zoom = useAppearance((s) => s.zoom)
   const set = useAppearance((s) => s.set)
+  const custom = useAppearance((s) => s.customTheme)
+  const customImage = useAppearance((s) => s.customImage)
   // While dragging, show the value but apply it on release.
   const [draft, setDraft] = useState<number | null>(null)
   const shownZoom = draft ?? zoom
@@ -43,9 +49,20 @@ export default function AppearanceSection(): React.JSX.Element {
       <h2 className="text-lg font-bold">Appearance</h2>
 
       <p className="mt-4 text-sm font-semibold text-text-subdued">Theme</p>
-      <div role="radiogroup" aria-label="Theme" className="mt-2 grid grid-cols-3 gap-2">
+      <div
+        role="radiogroup"
+        aria-label="Theme"
+        className="mt-2 grid grid-cols-2 gap-2 lg:grid-cols-4"
+      >
         {THEMES.map((t) => {
           const on = theme === t.theme
+          const isCustom = t.theme === 'custom'
+          const swatch = !isCustom
+            ? t.swatch
+            : custom.backdrop === 'image' && customImage
+              ? `center / cover url("${customImage}")`
+              : customBackdrop(custom)
+          const lightPanel = isCustom ? isLightColor(custom.background) : t.theme === 'light'
           return (
             <button
               key={t.theme}
@@ -58,14 +75,18 @@ export default function AppearanceSection(): React.JSX.Element {
             >
               <span
                 className="relative block h-16 overflow-hidden rounded-lg ring-1 ring-black/10"
-                style={{ background: t.swatch }}
+                style={{ background: swatch }}
               >
                 {/* A tiny frosted panel so each swatch reads as glass. */}
                 <span
-                  className={`absolute right-2 bottom-2 left-2 h-5 rounded-md ${
-                    t.theme === 'light' ? 'bg-white/60' : 'bg-black/30'
+                  className={`absolute right-2 bottom-2 left-2 flex h-5 items-center rounded-md px-1.5 ${
+                    lightPanel ? 'bg-white/60' : 'bg-black/30'
                   }`}
-                />
+                >
+                  {isCustom && (
+                    <span className="size-2.5 rounded-full" style={{ background: custom.accent }} />
+                  )}
+                </span>
                 {on && (
                   <span className="absolute top-1.5 right-1.5 flex size-5 items-center justify-center rounded-full bg-accent text-on-accent">
                     <Check size={12} strokeWidth={3} />
@@ -78,6 +99,7 @@ export default function AppearanceSection(): React.JSX.Element {
           )
         })}
       </div>
+      {theme === 'custom' && <CustomThemeEditor />}
 
       <div className="mt-6 flex items-center justify-between">
         <p className="text-sm font-semibold text-text-subdued">Zoom</p>

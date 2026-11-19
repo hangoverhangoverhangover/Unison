@@ -164,6 +164,20 @@ describe('app prefs', () => {
     expect(() => writeAppPrefs(db, { theme: 'blue' })).toThrow()
   })
 
+  it('stores a custom theme, cleaning bad fields', () => {
+    const prefs = writeAppPrefs(db, {
+      theme: 'custom',
+      customTheme: { accent: '#FF0088', blur: 999, font: 'nope' }
+    })
+    expect(prefs.theme).toBe('custom')
+    expect(prefs.customTheme).toEqual({
+      ...DEFAULT_APP_PREFS.customTheme,
+      accent: '#ff0088',
+      blur: 80
+    })
+    expect(readAppPrefs(db).customTheme.accent).toBe('#ff0088')
+  })
+
   it('validates and cleans the Jam prefs', () => {
     expect(
       writeAppPrefs(db, {
