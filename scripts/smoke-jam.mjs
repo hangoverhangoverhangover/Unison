@@ -77,7 +77,10 @@ try {
   await host.win.getByRole('button', { name: 'Start a Jam' }).click()
   const code = await host.win.locator('aside .font-mono').first().textContent({ timeout: 20000 })
   results.code = code?.trim()
-  await host.win.getByText(/added by Host/).first().waitFor({ timeout: 15000 })
+  await host.win
+    .getByText(/added by Host/)
+    .first()
+    .waitFor({ timeout: 15000 })
   await host.win.getByRole('button', { name: 'Pause' }).first().waitFor({ timeout: 15000 })
   results.carriedOver = true
   results.startButton = await host.win.getByRole('button', { name: 'Start playing' }).count()
@@ -99,7 +102,10 @@ try {
 
   // Guest adds a song by "playing" it (adds to the Jam queue).
   await (await search(guest.win, 'forss soulhack')).dblclick()
-  await host.win.getByText(/added by Guest/).first().waitFor({ timeout: 15000 })
+  await host.win
+    .getByText(/added by Guest/)
+    .first()
+    .waitFor({ timeout: 15000 })
   results.hostSeesGuestAdd = true
   await host.win.screenshot({ path: 'screenshots/32-jam-host.png' })
   await guest.win.screenshot({ path: 'screenshots/33-jam-guest.png' })
