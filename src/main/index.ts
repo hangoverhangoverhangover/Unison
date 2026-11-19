@@ -23,6 +23,7 @@ import { Menu } from 'electron'
 import { registerMini } from './mini'
 import { registerMediaKeys } from './mediaKeys'
 import { registerHistory } from './history'
+import { registerLastfm } from './lastfm'
 import { registerSettings } from './settings'
 import { registerTray } from './tray'
 import { registerTransfer } from './transfer'
@@ -213,6 +214,7 @@ app.whenReady().then(async () => {
     }
   }
   const history = registerHistory({ db, getWebContents })
+  const lastfm = registerLastfm({ db, getWebContents })
   const transfer = registerTransfer({
     db,
     getProvider: (p) => providers[p],
@@ -274,6 +276,7 @@ app.whenReady().then(async () => {
     () => mini.dispose(),
     () => mediaKeys.dispose(),
     () => history.dispose(),
+    () => lastfm.dispose(),
     () => settings.dispose(),
     () => tray.dispose(),
     () => transfer.dispose(),

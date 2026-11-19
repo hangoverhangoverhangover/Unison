@@ -10,6 +10,7 @@ import SpotifyClientIdForm from '@renderer/components/SpotifyClientIdForm'
 import { BehaviourSection, ShortcutsSection } from '@renderer/components/BehaviourSection'
 import SoundSection from '@renderer/components/SoundSection'
 import AppearanceSection from '@renderer/components/AppearanceSection'
+import LastfmSection from '@renderer/components/LastfmSection'
 import { useElementWidth } from '@renderer/lib/useElementWidth'
 import JamSection from '@renderer/components/JamSection'
 import ActivePill from '@renderer/components/ActivePill'
@@ -198,6 +199,7 @@ export default function SettingsView(): React.JSX.Element {
               <ServiceSection provider="spotify" />
               <ServiceSection provider="soundcloud" />
               <SoundCloudTokenForm />
+              <LastfmSection />
             </Group>
             <Group id="appearance">
               <AppearanceSection />

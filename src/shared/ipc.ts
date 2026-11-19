@@ -4,6 +4,7 @@ import type { DiscordStatus, PresenceUpdate } from './discord'
 import type { DownloadItem, DownloaderStatus, DownloadProgress } from './downloads'
 import type { FindResult, MiniCommand, MiniState } from './match'
 import type { JamCapabilities, JamCommand, JamStatus } from './jam'
+import type { LastfmStatus, ScrobbleReport } from './lastfm'
 import type {
   ListeningStats,
   PlayReport,
@@ -103,6 +104,15 @@ export interface IpcInvokeMap {
   // QoL round 2: history and stats
   /** Count a play (the renderer decides when a play counts; see PLAY_COUNT_MIN_MS). */
   'history:record': (report: PlayReport) => void
+  /** Last.fm (QoL 3): status; keys are kept in main, the secret encrypted. */
+  'lastfm:getStatus': () => LastfmStatus
+  'lastfm:setKeys': (apiKey: string, secret: string) => LastfmStatus
+  /** Opens Last.fm's approval page in the browser; resolves once it's open. */
+  'lastfm:connect': () => LastfmStatus
+  'lastfm:disconnect': () => LastfmStatus
+  'lastfm:setScrobbleSpotify': (on: boolean) => LastfmStatus
+  'lastfm:nowPlaying': (track: Track) => void
+  'lastfm:scrobble': (report: ScrobbleReport) => void
   /** Newest first, one entry per play. */
   'history:recent': (limit: number) => RecentPlay[]
   'history:smart': (kind: SmartPlaylistKind) => SmartPlaylist
@@ -297,6 +307,7 @@ export interface IpcEventMap {
   'jam:status': JamStatus
   /** Plays were recorded or history cleared. */
   'history:changed': null
+  'lastfm:status': LastfmStatus
   /** transfer:plan progress. */
   'transfer:progress': { done: number; total: number }
   'prefs:changed': AppPrefs
@@ -366,6 +377,13 @@ const invokeChannels = {
   'audio:set': true,
   'tray:nowPlaying': true,
   'history:record': true,
+  'lastfm:getStatus': true,
+  'lastfm:setKeys': true,
+  'lastfm:connect': true,
+  'lastfm:disconnect': true,
+  'lastfm:setScrobbleSpotify': true,
+  'lastfm:nowPlaying': true,
+  'lastfm:scrobble': true,
   'history:recent': true,
   'history:smart': true,
   'history:stats': true,
@@ -455,6 +473,7 @@ const eventChannels = {
   'media:key': true,
   'jam:status': true,
   'history:changed': true,
+  'lastfm:status': true,
   'transfer:progress': true,
   'prefs:changed': true,
   'mini:open': true,

@@ -40,6 +40,7 @@ import LibraryView from './views/LibraryView'
 import SmartView from './views/SmartView'
 import StatsView from './views/StatsView'
 import { bindHistory } from './playback/historyBridge'
+import { bindLastfm } from './playback/lastfmBridge'
 import { bindHistoryEvents } from './state/history'
 import { bindDownloadsEvents } from './state/downloads'
 import { LikedView, PlaylistView } from './views/ServiceViews'
@@ -79,6 +80,7 @@ export default function App(): React.JSX.Element {
   useEffect(() => bindShortcuts(playback), [])
   useEffect(() => bindTray(playback), [])
   useEffect(() => bindHistory(playback), [])
+  useEffect(() => bindLastfm(playback), [])
   useEffect(() => bindHistoryEvents(), [])
   useEffect(() => bindMiniBridge(playback, (open) => useUi.getState().setMiniOpen(open)), [])
   useEffect(() => bindDownloadsEvents(), [])

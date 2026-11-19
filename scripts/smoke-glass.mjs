@@ -443,6 +443,26 @@ try {
     await win.getByRole('button', { name: 'Shuffle', exact: true }).click()
   }
 
+  if (want('lastfm')) {
+    // Empty card, then saved keys (not real ones: Connect should explain the refusal).
+    await win.getByRole('button', { name: 'Settings', exact: true }).click()
+    const card = win.locator('section', { hasText: 'Last.fm' }).first()
+    await card.scrollIntoViewIfNeeded()
+    await shot('artwork-lastfm-empty')
+    await card
+      .getByRole('textbox', { name: 'Last.fm API key' })
+      .fill('0123456789abcdef0123456789abcdef')
+    await card.getByLabel('Last.fm shared secret').fill('fedcba9876543210fedcba9876543210')
+    await card.getByRole('button', { name: 'Save' }).click()
+    await card.getByRole('button', { name: 'Connect' }).click()
+    await win.waitForTimeout(3000)
+    await shot('artwork-lastfm-bad-key')
+    console.log(
+      'lastfm:',
+      JSON.stringify(await win.evaluate(() => window.api.invoke('lastfm:getStatus')))
+    )
+  }
+
   if (want('layout')) {
     // Drag the sidebar edge left past the snap point: it becomes the icon rail.
     await go('Local Files')
