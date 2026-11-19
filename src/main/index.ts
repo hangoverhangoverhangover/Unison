@@ -64,6 +64,12 @@ function defaultDownloadFolder(): string {
   return existsSync(old) ? old : join(app.getPath('music'), 'Unison')
 }
 
+// One Unison per profile. A second launch (shortcut, relaunch, anything) would
+// otherwise start a full copy with its own tray icon and its own playback; it now
+// just brings the running window forward (see 'second-instance' below) and exits.
+// The lock is per data folder, so throwaway profiles (--user-data-dir) still run.
+if (!app.requestSingleInstanceLock()) app.exit(0)
+
 app.whenReady().then(async () => {
   electronApp.setAppUserModelId('com.tripp.combinedplayer')
 
@@ -294,6 +300,16 @@ app.whenReady().then(async () => {
     })
   }
   openMain()
+
+  app.on('second-instance', () => {
+    if (!mainWindow || mainWindow.isDestroyed()) {
+      openMain()
+      return
+    }
+    if (mainWindow.isMinimized()) mainWindow.restore()
+    mainWindow.show()
+    mainWindow.focus()
+  })
 
   app.on('activate', () => {
     if (!mainWindow) openMain()
