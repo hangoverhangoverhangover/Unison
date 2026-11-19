@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildLines, startSync, tap, undo, wordsOf } from './lyricSync'
+import { buildLines, currentLineIndex, startSync, tap, undo, wordsOf } from './lyricSync'
 
 const text = 'First line here\n\nSecond line\nThird'
 
@@ -8,16 +8,23 @@ describe('lyric sync (tap along)', () => {
     expect(startSync(text, 'lines').lines).toEqual(['First line here', 'Second line', 'Third'])
   })
 
-  it('stamps each line in turn and builds LRC lines', () => {
+  it('first tap starts the first line; each tap after ends the line being sung', () => {
     let s = startSync(text, 'lines')
-    s = tap(s, 1000)
-    s = tap(s, 4000)
+    expect(currentLineIndex(s)).toBe(0)
+    s = tap(s, 1000) // First line starts
+    expect(currentLineIndex(s)).toBe(0)
+    s = tap(s, 4000) // First line ends, Second begins
+    expect(currentLineIndex(s)).toBe(1)
     s = tap(s, 9000)
+    expect(s.done).toBe(false)
+    s = tap(s, 12000) // Third ends: done
     expect(s.done).toBe(true)
     expect(buildLines(s)).toEqual([
       { timeMs: 1000, text: 'First line here' },
       { timeMs: 4000, text: 'Second line' },
-      { timeMs: 9000, text: 'Third' }
+      { timeMs: 9000, text: 'Third' },
+      // The end of the last line clears it.
+      { timeMs: 12000, text: '' }
     ])
   })
 
@@ -32,7 +39,8 @@ describe('lyric sync (tap along)', () => {
   it('word mode stamps every word; a line starts at its first word', () => {
     let s = startSync('Hello there\nBye', 'words')
     expect(s.total).toBe(3)
-    for (const t of [1000, 1500, 3000]) s = tap(s, t)
+    for (const t of [1000, 1500, 3000, 3600]) s = tap(s, t)
+    expect(s.done).toBe(true)
     expect(buildLines(s)).toEqual([
       {
         timeMs: 1000,
@@ -42,7 +50,8 @@ describe('lyric sync (tap along)', () => {
           { timeMs: 1500, text: 'there' }
         ]
       },
-      { timeMs: 3000, text: 'Bye', words: [{ timeMs: 3000, text: 'Bye' }] }
+      { timeMs: 3000, text: 'Bye', words: [{ timeMs: 3000, text: 'Bye' }] },
+      { timeMs: 3600, text: '' }
     ])
   })
 

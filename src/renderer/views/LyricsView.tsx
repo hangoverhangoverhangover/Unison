@@ -87,6 +87,8 @@ export default function LyricsView(): React.JSX.Element {
       ) : lines ? (
         <ol className="flex flex-col gap-3 pb-[30vh]">
           {lines.map((l, i) => {
+            // An empty last line only marks where the singing ends.
+            if (!l.text && i === lines.length - 1) return <li key="end" data-line={i} />
             const state = i === line ? 'now' : i < line ? 'past' : 'next'
             return (
               <li key={`${i}:${l.timeMs}`} data-line={i}>

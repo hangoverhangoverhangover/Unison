@@ -18,27 +18,33 @@ export default function LyricsBar(): React.JSX.Element | null {
   if (!lines || !barOn || view === 'lyrics' || line < 0) return null
   const now = lines[line]!
   const next = lines[line + 1]
+  // An empty last line marks where the singing ends: nothing more to show.
+  if (!now.text && !next) return null
   return (
     <div className="pointer-events-none absolute inset-x-0 bottom-[86px] z-30 flex justify-center px-6">
+      {/* Fixed width, so the pill never jumps in size between short and long lines. */}
       <button
         onClick={() => setView('lyrics')}
         title="Open lyrics"
-        className="glass-bar pointer-events-auto max-w-[min(720px,100%)] overflow-hidden rounded-2xl px-5 py-2 text-center"
+        className="glass-bar pointer-events-auto w-[min(640px,100%)] overflow-hidden rounded-2xl px-5 py-2 text-center"
       >
-        <AnimatePresence mode="popLayout" initial={false}>
-          {/* Slide the new line in from below (transform only, so the glass keeps its blur). */}
-          <motion.p
-            key={`${line}:${now.timeMs}`}
-            initial={{ y: 14 }}
-            animate={{ y: 0 }}
-            exit={{ y: -14 }}
-            transition={{ duration: m.duration.base / 1000, ease: [0.2, 0, 0, 1] }}
-            className="truncate text-md font-bold text-text"
-          >
-            {now.text || '♪'}
-          </motion.p>
-        </AnimatePresence>
-        {next?.text && <p className="truncate text-xs text-text-muted">{next.text}</p>}
+        {/* Both lines move together: the old pair slides up and fades as the new one
+            rises in (transform and opacity on the text only; the glass stays put). */}
+        <div className="relative h-[38px]">
+          <AnimatePresence initial={false}>
+            <motion.div
+              key={`${line}:${now.timeMs}`}
+              className="absolute inset-0"
+              initial={{ y: 18, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: -18, opacity: 0 }}
+              transition={{ duration: m.duration.base / 1000, ease: [0.2, 0, 0, 1] }}
+            >
+              <p className="truncate text-md font-bold text-text">{now.text || '♪'}</p>
+              <p className="truncate text-xs text-text-muted">{next?.text ?? ''}</p>
+            </motion.div>
+          </AnimatePresence>
+        </div>
       </button>
     </div>
   )

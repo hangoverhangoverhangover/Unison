@@ -123,7 +123,8 @@ function loadPicture(file: File): Promise<string> {
 const BACKDROP_LABELS: Record<Backdrop, string> = {
   solid: 'Solid',
   gradient: 'Gradient',
-  image: 'Picture'
+  image: 'Picture',
+  artwork: 'Artwork'
 }
 
 /** Settings → Appearance → Custom: colours, background, glass, font, theme files. */
@@ -234,6 +235,21 @@ export default function CustomThemeEditor(): React.JSX.Element {
             step={5}
             format={(v) => `${v}°`}
             onChange={(gradientAngle) => update({ gradientAngle })}
+          />
+        </div>
+      )}
+      {theme.backdrop === 'artwork' && (
+        <div className="mt-3 grid grid-cols-[1fr_1fr] items-center gap-4">
+          <p className="text-sm text-text-subdued">
+            The playing song&apos;s cover, blurred, changing with each song.
+          </p>
+          <RangeField
+            label="Shade"
+            value={theme.imageDim}
+            {...THEME_LIMITS.imageDim}
+            step={0.05}
+            format={(v) => `${Math.round(v * 100)}%`}
+            onChange={(imageDim) => update({ imageDim })}
           />
         </div>
       )}

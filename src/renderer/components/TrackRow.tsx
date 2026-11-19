@@ -1,5 +1,5 @@
 import * as ContextMenu from '@radix-ui/react-context-menu'
-import { ChevronRight, Play, Plus } from 'lucide-react'
+import { ChevronRight, Pause, Play, Plus } from 'lucide-react'
 import { useMemo } from 'react'
 import type { Track } from '@shared/types'
 import { isPlayable } from '@shared/types'
@@ -84,12 +84,22 @@ export default function TrackRow({
             <span className={`group-hover:invisible ${isCurrent ? 'text-accent' : ''}`}>
               {isCurrent && playing ? <EqBars /> : index + 1}
             </span>
+            {/* On the song that's playing, the button pauses and resumes it instead of
+                starting it over. */}
             <button
-              aria-label={`Play ${track.title}`}
-              onClick={onPlay}
+              aria-label={isCurrent && playing ? `Pause ${track.title}` : `Play ${track.title}`}
+              onClick={() => {
+                if (!isCurrent) onPlay()
+                else if (playing) playback.pause()
+                else void playback.play()
+              }}
               className="invisible absolute inset-y-0 right-0 flex items-center text-text group-hover:visible"
             >
-              <Play size={16} fill="currentColor" />
+              {isCurrent && playing ? (
+                <Pause size={16} fill="currentColor" />
+              ) : (
+                <Play size={16} fill="currentColor" />
+              )}
             </button>
           </span>
           <span className="flex min-w-0 items-center gap-3">

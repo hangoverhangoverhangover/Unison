@@ -485,9 +485,11 @@ try {
         ].join('\n')
       )
     await win.getByRole('button', { name: 'Sync line by line' }).click()
-    for (let i = 0; i < 4; i++) {
+    // First tap starts line 1, then one tap as each of the 4 lines ends.
+    for (let i = 0; i < 5; i++) {
       await win.waitForTimeout(1500)
       await win.keyboard.press('Space')
+      if (i === 2) await shot('artwork-lyrics-syncing')
     }
     await win.waitForTimeout(300)
     await shot('artwork-lyrics-editor-review')
@@ -531,6 +533,24 @@ try {
     await win.waitForTimeout(1200)
     await go('Local Files')
     await shot('artwork-theme-picture')
+    // The playing song's artwork as the custom background.
+    await win.getByRole('button', { name: 'Settings', exact: true }).click()
+    await card.getByRole('radio', { name: 'Artwork', exact: true }).click()
+    await go('Local Files')
+    await win.getByText('Glasshouse').first().dblclick()
+    await win.waitForTimeout(1000)
+    console.log(
+      'row buttons:',
+      await win
+        .locator('main [aria-label*="Glasshouse"]')
+        .evaluateAll((els) => els.map((e) => e.getAttribute('aria-label'))),
+      await win.evaluate(() =>
+        document
+          .querySelector('footer button[aria-label="Pause"], footer button[aria-label="Play"]')
+          ?.getAttribute('aria-label')
+      )
+    )
+    await shot('artwork-theme-artwork')
     // Export, change something, import: the saved accent comes back.
     const file = join(userData, 'smoke.unisontheme')
     await app.evaluate(({ dialog }, path) => {

@@ -1,5 +1,6 @@
-// Tap-along lyric sync for the lyrics editor: the song plays and each tap stamps the
-// next line (or, in word mode, the next word) with the current position.
+// Tap-along lyric sync for the lyrics editor. The song plays; the first tap marks the
+// first line (or word, in word mode) starting, and every tap after marks the one being
+// sung ending, which is when the next one starts. One more tap than units in all.
 import type { LyricLine } from '@shared/lyrics'
 
 export interface SyncState {
@@ -7,10 +8,11 @@ export interface SyncState {
   lines: string[]
   /** Words per line (word mode). */
   words: string[][]
-  /** Stamp per unit (line or word, in order). */
+  /** Start of each unit (line or word, in order), then the end of the last one. */
   stamps: number[]
-  /** Next unit to stamp. */
+  /** Taps so far. */
   cursor: number
+  /** Units (lines or words); a full sync takes total + 1 taps. */
   total: number
   done: boolean
 }
@@ -37,7 +39,7 @@ export function tap(s: SyncState, positionMs: number): SyncState {
   if (last !== undefined && positionMs < last) return s
   const stamps = [...s.stamps.slice(0, s.cursor), Math.round(positionMs)]
   const cursor = s.cursor + 1
-  return { ...s, stamps, cursor, done: cursor >= s.total }
+  return { ...s, stamps, cursor, done: cursor > s.total }
 }
 
 export function undo(s: SyncState): SyncState {
@@ -49,7 +51,7 @@ export function undo(s: SyncState): SyncState {
 /** The stamped lines so far (all of them once done). */
 export function buildLines(s: SyncState): LyricLine[] {
   if (s.mode === 'lines') {
-    return s.stamps.map((timeMs, i) => ({ timeMs, text: s.lines[i]! }))
+    return s.stamps.map((timeMs, i) => ({ timeMs, text: s.lines[i] ?? '' }))
   }
   const out: LyricLine[] = []
   let k = 0
@@ -60,13 +62,21 @@ export function buildLines(s: SyncState): LyricLine[] {
     if (words.length === 0) return
     out.push({ timeMs: words[0]!.timeMs, text: s.lines[i]!, words })
   })
+  // The end of the last word clears the line.
+  const end = s.stamps[s.total]
+  if (end !== undefined) out.push({ timeMs: end, text: '' })
   return out
 }
 
-/** Index of the line holding the next unit to stamp (for highlighting). */
+/** The unit being sung now (before the first tap: the first one, coming up). */
+export function currentUnit(s: SyncState): number {
+  return Math.max(0, Math.min(s.cursor - 1, s.total - 1))
+}
+
+/** Index of the line being sung (for highlighting). */
 export function currentLineIndex(s: SyncState): number {
-  if (s.mode === 'lines') return Math.min(s.cursor, s.lines.length - 1)
-  let k = s.cursor
+  if (s.mode === 'lines') return currentUnit(s)
+  let k = currentUnit(s)
   for (let i = 0; i < s.words.length; i++) {
     if (k < s.words[i]!.length) return i
     k -= s.words[i]!.length

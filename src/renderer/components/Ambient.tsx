@@ -38,7 +38,9 @@ export default function Ambient(): React.JSX.Element {
   const customImage = useAppearance((s) => s.customImage)
   const art = usePlayback((s) => s.current?.track.artworkUrl)
   const [failed, setFailed] = useState<string | undefined>()
-  const src = theme === 'artwork' && art && art !== failed ? art : undefined
+  // The Artwork theme, or a custom theme with the artwork as its background.
+  const customArt = theme === 'custom' && custom.backdrop === 'artwork'
+  const src = (theme === 'artwork' || customArt) && art && art !== failed ? art : undefined
 
   return (
     <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
@@ -88,6 +90,13 @@ export default function Ambient(): React.JSX.Element {
           />
         )}
       </AnimatePresence>
+      {customArt && (
+        // Your shade over the cover, in the theme colour, so text stays readable.
+        <div
+          className="absolute inset-0"
+          style={{ background: custom.background, opacity: custom.imageDim }}
+        />
+      )}
       {theme === 'artwork' && (
         // The title bar has no panel behind it: a little extra shade at the top keeps its
         // icons and the Windows caption buttons readable over a bright cover.

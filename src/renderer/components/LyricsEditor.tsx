@@ -6,6 +6,7 @@ import { useLyrics } from '@renderer/state/lyrics'
 import {
   buildLines,
   currentLineIndex,
+  currentUnit,
   startSync,
   tap,
   undo,
@@ -97,9 +98,13 @@ export default function LyricsEditor(): React.JSX.Element {
 
   const lines = sync?.lines ?? []
   const at = sync ? currentLineIndex(sync) : -1
+  // Before the first tap the first line is only coming up; after, the highlight is the
+  // line being sung, and a tap says it ended.
+  const started = (sync?.cursor ?? 0) > 0
+  const unit = sync?.mode === 'words' ? 'word' : 'line'
   let wordIndex = -1
   if (sync?.mode === 'words') {
-    let k = sync.cursor
+    let k = currentUnit(sync)
     for (let i = 0; i < at; i++) k -= sync.words[i]!.length
     wordIndex = k
   }
@@ -187,10 +192,12 @@ export default function LyricsEditor(): React.JSX.Element {
         <>
           <p className="mb-3 text-sm text-text-subdued">
             The song is playing from the start. Press{' '}
-            <kbd className="rounded border border-divider px-1">Space</kbd> or Tap as each{' '}
-            {sync.mode === 'lines' ? 'line' : 'word'} begins.{' '}
+            <kbd className="rounded border border-divider px-1">Space</kbd> or Tap{' '}
+            {started
+              ? `when the highlighted ${unit} ends.`
+              : `when the first ${unit} starts, then each time the ${unit} you hear ends.`}{' '}
             <span className="tabular-nums">
-              {sync.cursor} / {sync.total}
+              {Math.max(0, sync.cursor - 1)} / {sync.total} done
             </span>
           </p>
           <ol className="mb-4 max-h-[42vh] overflow-y-auto rounded-lg bg-raised p-3">
@@ -202,7 +209,9 @@ export default function LyricsEditor(): React.JSX.Element {
                 }}
                 className={`rounded-md px-2 py-1 ${
                   i === at
-                    ? 'bg-accent/20 font-bold text-text'
+                    ? started
+                      ? 'bg-accent/20 font-bold text-text'
+                      : 'font-bold text-text ring-1 ring-accent/60'
                     : i < at
                       ? 'text-text-subdued'
                       : 'text-text-muted'
@@ -228,7 +237,7 @@ export default function LyricsEditor(): React.JSX.Element {
             onClick={doTap}
             className="flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-4 text-lg font-bold text-on-accent transition-transform duration-75 hover:bg-accent-hover active:scale-[0.98]"
           >
-            <Hand size={20} /> Tap
+            <Hand size={20} /> {started ? `Tap: ${unit} ended` : `Tap: first ${unit} starts`}
           </button>
         </>
       )}

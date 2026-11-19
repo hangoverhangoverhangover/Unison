@@ -2,8 +2,9 @@
 // prefs (validated in main); the background image is kept apart (see theme:getImage),
 // so prefs stay small. Applied as CSS variables on <html>, over the dark/light glass.
 
-export type Backdrop = 'solid' | 'gradient' | 'image'
-export const BACKDROPS: readonly Backdrop[] = ['solid', 'gradient', 'image']
+/** 'artwork': the playing song's cover, blurred, like the Artwork theme. */
+export type Backdrop = 'solid' | 'gradient' | 'image' | 'artwork'
+export const BACKDROPS: readonly Backdrop[] = ['solid', 'gradient', 'image', 'artwork']
 
 export const FONTS = {
   figtree: {
@@ -30,7 +31,7 @@ export interface CustomTheme {
   backdrop: Backdrop
   /** Gradient direction, degrees. */
   gradientAngle: number
-  /** Shade over a background image so text reads (0-0.85). */
+  /** Shade over a background picture or artwork so text reads (0-0.85). */
   imageDim: number
   /** Panel blur in px; the play bar and dialogs blur more. */
   blur: number
