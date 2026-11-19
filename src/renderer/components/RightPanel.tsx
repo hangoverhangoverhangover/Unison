@@ -7,6 +7,7 @@ import { useAppearance } from '@renderer/state/appearance'
 import { motion as m } from '@renderer/styles/tokens'
 import QueuePanel from './QueuePanel'
 import DetailsPanel from './CommentsPanel'
+import ErrorBoundary from './ErrorBoundary'
 import JamPanel from './JamPanel'
 import ActivePill from '@renderer/components/ActivePill'
 
@@ -85,7 +86,9 @@ export default function RightPanel({
         </button>
       </header>
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-b-panel">
-        {tab === 'queue' ? <QueuePanel /> : tab === 'details' ? <DetailsPanel /> : <JamPanel />}
+        <ErrorBoundary name={`panel ${tab}`} resetKey={tab}>
+          {tab === 'queue' ? <QueuePanel /> : tab === 'details' ? <DetailsPanel /> : <JamPanel />}
+        </ErrorBoundary>
       </div>
     </motion.aside>
   )

@@ -42,6 +42,7 @@ import StatsView from './views/StatsView'
 import LyricsView from './views/LyricsView'
 import LyricsBar from './components/LyricsBar'
 import LyricsEditor from './components/LyricsEditor'
+import ErrorBoundary from './components/ErrorBoundary'
 import { bindLyrics } from './state/lyrics'
 import { bindHistory } from './playback/historyBridge'
 import { bindLastfm } from './playback/lastfmBridge'
@@ -92,7 +93,9 @@ export default function App(): React.JSX.Element {
 
   return (
     <div className="flex h-full flex-col">
-      <Ambient />
+      <ErrorBoundary name="background" fallback="hidden">
+        <Ambient />
+      </ErrorBoundary>
       <TitleBar />
       <div
         ref={rootRef}
@@ -102,64 +105,69 @@ export default function App(): React.JSX.Element {
         // with the Windows caption buttons, which never scale).
         style={{ zoom }}
       >
-        <Sidebar
-          width={fit.sidebar}
-          handle={
-            <ResizeHandle
-              side="right"
-              label="Resize sidebar"
-              value={fit.sidebar}
-              scale={zoom}
-              onChange={(px) => setDragSidebar(clampSidebarWidth(px))}
-              onCommit={(px) => {
-                setDragSidebar(null)
-                setAppearance({ sidebarWidth: clampSidebarWidth(px) })
-              }}
-              onDoubleClick={() =>
-                setAppearance({
-                  sidebarWidth: fit.sidebar <= SIDEBAR.rail ? SIDEBAR.default : SIDEBAR.rail
-                })
-              }
-            />
-          }
-        />
+        <ErrorBoundary name="sidebar">
+          <Sidebar
+            width={fit.sidebar}
+            handle={
+              <ResizeHandle
+                side="right"
+                label="Resize sidebar"
+                value={fit.sidebar}
+                scale={zoom}
+                onChange={(px) => setDragSidebar(clampSidebarWidth(px))}
+                onCommit={(px) => {
+                  setDragSidebar(null)
+                  setAppearance({ sidebarWidth: clampSidebarWidth(px) })
+                }}
+                onDoubleClick={() =>
+                  setAppearance({
+                    sidebarWidth: fit.sidebar <= SIDEBAR.rail ? SIDEBAR.default : SIDEBAR.rail
+                  })
+                }
+              />
+            }
+          />
+        </ErrorBoundary>
         <main className="glass relative min-w-0 flex-1 overflow-hidden rounded-panel">
           <div className="h-full">
-            {view === 'local' ? (
-              <LocalFilesView />
-            ) : view === 'settings' ? (
-              <SettingsView />
-            ) : view === 'likes' ? (
-              <LikedView />
-            ) : view === 'search' ? (
-              <SearchView />
-            ) : view === 'feed' ? (
-              <FeedView />
-            ) : view === 'following' ? (
-              <FollowingView />
-            ) : view === 'duplicates' ? (
-              <DuplicatesView />
-            ) : view === 'lyrics' ? (
-              <LyricsView />
-            ) : view === 'stats' ? (
-              <StatsView />
-            ) : view.startsWith('smart:') ? (
-              <SmartView
-                kind={view.slice('smart:'.length) as 'recent' | 'on-repeat' | 'forgotten'}
-              />
-            ) : view === 'library' ? (
-              <LibraryView />
-            ) : view === 'downloads' ? (
-              <DownloadsView />
-            ) : view.startsWith('artist:') ? (
-              <ArtistView id={view.slice('artist:'.length)} />
-            ) : view.startsWith('track:') ? (
-              <TrackView id={view.slice('track:'.length)} />
-            ) : view.startsWith('album:') ? (
-              <AlbumView id={view.slice('album:'.length)} />
-            ) : (
-              <PlaylistView id={view.slice('playlist:'.length)} />
-            )}
+            {/* Opening another page retries a page that crashed. */}
+            <ErrorBoundary name={`page ${view}`} resetKey={view}>
+              {view === 'local' ? (
+                <LocalFilesView />
+              ) : view === 'settings' ? (
+                <SettingsView />
+              ) : view === 'likes' ? (
+                <LikedView />
+              ) : view === 'search' ? (
+                <SearchView />
+              ) : view === 'feed' ? (
+                <FeedView />
+              ) : view === 'following' ? (
+                <FollowingView />
+              ) : view === 'duplicates' ? (
+                <DuplicatesView />
+              ) : view === 'lyrics' ? (
+                <LyricsView />
+              ) : view === 'stats' ? (
+                <StatsView />
+              ) : view.startsWith('smart:') ? (
+                <SmartView
+                  kind={view.slice('smart:'.length) as 'recent' | 'on-repeat' | 'forgotten'}
+                />
+              ) : view === 'library' ? (
+                <LibraryView />
+              ) : view === 'downloads' ? (
+                <DownloadsView />
+              ) : view.startsWith('artist:') ? (
+                <ArtistView id={view.slice('artist:'.length)} />
+              ) : view.startsWith('track:') ? (
+                <TrackView id={view.slice('track:'.length)} />
+              ) : view.startsWith('album:') ? (
+                <AlbumView id={view.slice('album:'.length)} />
+              ) : (
+                <PlaylistView id={view.slice('playlist:'.length)} />
+              )}
+            </ErrorBoundary>
           </div>
         </main>
         <AnimatePresence>
@@ -184,14 +192,20 @@ export default function App(): React.JSX.Element {
           )}
         </AnimatePresence>
         {/* Floats over the bottom of every panel; each panel's list scrolls under it. */}
-        <LyricsBar />
-        <PlayBar />
+        <ErrorBoundary name="lyric bar" fallback="hidden">
+          <LyricsBar />
+        </ErrorBoundary>
+        <ErrorBoundary name="play bar" fallback="hidden">
+          <PlayBar />
+        </ErrorBoundary>
       </div>
       <ZoomToast />
       <FindDialog />
       <TagEditorDialog />
       <TransferDialog />
-      <LyricsEditor />
+      <ErrorBoundary name="lyrics editor" fallback="hidden">
+        <LyricsEditor />
+      </ErrorBoundary>
       {/* Last, so quick search opened from inside a dialog shows on top of it. */}
       <QuickSearch />
     </div>

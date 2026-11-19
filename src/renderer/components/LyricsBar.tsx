@@ -16,10 +16,11 @@ export default function LyricsBar(): React.JSX.Element | null {
   const setView = useUi((s) => s.setView)
   const { line } = useLyricPosition(barOn && view !== 'lyrics' ? lines : null)
   if (!lines || !barOn || view === 'lyrics' || line < 0) return null
-  const now = lines[line]!
+  const now = lines[line]
   const next = lines[line + 1]
-  // An empty last line marks where the singing ends: nothing more to show.
-  if (!now.text && !next) return null
+  // No such line (lyrics just changed), or an empty last line marking where the
+  // singing ends: nothing to show.
+  if (!now || (!now.text && !next)) return null
   return (
     <div className="pointer-events-none absolute inset-x-0 bottom-[86px] z-30 flex justify-center px-6">
       {/* Fixed width, so the pill never jumps in size between short and long lines. */}

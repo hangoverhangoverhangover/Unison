@@ -509,6 +509,41 @@ try {
     } else console.log('no mini window')
   }
 
+  if (want('lyricscrash')) {
+    // Regression: the lyric bar crashed the whole window when it came back on with
+    // shorter lyrics than the ones it last showed (a stale line number).
+    await go('Local Files')
+    await win.getByRole('radio', { name: 'Unsorted' }).click()
+    await win.getByText('White Room').first().dblclick()
+    await win.waitForTimeout(500)
+    const syncLines = async (lines) => {
+      await win.getByRole('button', { name: 'Lyrics', exact: true }).click()
+      await win
+        .locator('main')
+        .getByRole('button', { name: /Add lyrics|Edit or re-sync/ })
+        .click()
+      await win.getByRole('textbox', { name: 'Lyrics' }).fill(lines.join(String.fromCharCode(10)))
+      await win.getByRole('button', { name: 'Sync line by line' }).click()
+      for (let i = 0; i <= lines.length; i++) {
+        await win.waitForTimeout(700)
+        await win.keyboard.press('Space')
+      }
+      await win.getByRole('button', { name: 'Save', exact: true }).click()
+      await win.waitForTimeout(400)
+    }
+    // Six lines, and the song played into the last ones with the bar showing.
+    await syncLines(['one', 'two', 'three', 'four', 'five', 'six'])
+    await go('Local Files')
+    await win.waitForTimeout(4500)
+    // Re-sync to one line on the lyrics page, then leave it.
+    await syncLines(['only'])
+    await go('Local Files')
+    await win.waitForTimeout(800)
+    const alive = await win.locator('main h1').count()
+    console.log('lyricscrash: page still drawn =', alive > 0)
+    await shot('artwork-lyrics-resync')
+  }
+
   if (want('theme')) {
     // Custom theme: pick it, change colours, glass and font, use a picture, then save
     // the theme to a file and load it back.
