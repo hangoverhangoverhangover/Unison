@@ -119,6 +119,9 @@ export function createPlaybackController(
     }
   }
 
+  /** How many times the queue ran out on its own (see PlaybackState.endedAt). */
+  let endedCount = 0
+
   const livePosition = (): number => (active && q.current ? active.getPositionMs() : 0)
 
   const snapshot = (positionMs: number): PlaybackState =>
@@ -132,7 +135,8 @@ export function createPlaybackController(
       muted,
       shuffle: q.shuffle,
       repeat,
-      ...(error !== undefined ? { error } : {})
+      ...(error !== undefined ? { error } : {}),
+      ...(endedCount > 0 ? { endedAt: endedCount } : {})
     })
 
   let state: PlaybackState = snapshot(0)
@@ -146,6 +150,7 @@ export function createPlaybackController(
     a.shuffle !== b.shuffle ||
     a.repeat !== b.repeat ||
     a.error !== b.error ||
+    a.endedAt !== b.endedAt ||
     a.queue.length !== b.queue.length ||
     a.queue.some((item, i) => item !== b.queue[i])
 
@@ -319,6 +324,8 @@ export function createPlaybackController(
     }
     const advanced = nextPlayable()
     if (!advanced) {
+      // The last song finished by itself: say so, so a Jam can move on.
+      endedCount++
       stopAtEnd()
       return
     }

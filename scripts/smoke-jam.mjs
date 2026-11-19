@@ -48,14 +48,41 @@ async function open(name) {
 const host = await open('Host')
 const guest = await open('Guest')
 try {
-  // Host starts from the panel.
+  const search = async (w, q) => {
+    await w.getByRole('button', { name: 'Search', exact: true }).click()
+    const sp = w.getByRole('checkbox', { name: /Spotify/ })
+    if ((await sp.getAttribute('aria-checked')) === 'true') await sp.click()
+    const lo = w.getByRole('checkbox', { name: /Local/ })
+    if ((await lo.getAttribute('aria-checked')) === 'true') await lo.click()
+    await w.getByRole('textbox', { name: 'Search', exact: true }).fill(q)
+    await w.getByRole('radio', { name: 'Songs' }).click()
+    const row = w.locator('[role=listitem]').first()
+    await row.waitFor({ timeout: 20000 })
+    return row
+  }
+  const clock = (w) =>
+    w.evaluate(
+      () => document.querySelector('[aria-label="Seek"]')?.previousElementSibling?.textContent
+    )
+  const title = (w) => w.locator('footer p, [class*="text-md font-medium"]').first().textContent()
+
+  // Host is already listening to something before the Jam starts.
+  await (await search(host.win, 'forss flickermood')).dblclick()
+  await host.win.getByRole('button', { name: 'Pause' }).first().waitFor({ timeout: 30000 })
+  await host.win.waitForTimeout(6000)
+
+  // Host starts a Jam: the song carries over, still playing, no Start button.
   await host.win.getByRole('button', { name: 'Queue, details and Jam' }).click()
   await host.win.getByRole('tab', { name: /^Jam/ }).click()
   await host.win.getByRole('button', { name: 'Start a Jam' }).click()
   const code = await host.win.locator('aside .font-mono').first().textContent({ timeout: 20000 })
   results.code = code?.trim()
+  await host.win.getByText(/added by Host/).first().waitFor({ timeout: 15000 })
+  await host.win.getByRole('button', { name: 'Pause' }).first().waitFor({ timeout: 15000 })
+  results.carriedOver = true
+  results.startButton = await host.win.getByRole('button', { name: 'Start playing' }).count()
 
-  // Guest joins with the code.
+  // Guest joins with the code and hears it from where the host is.
   await guest.win.getByRole('button', { name: 'Queue, details and Jam' }).click()
   await guest.win.getByRole('tab', { name: /^Jam/ }).click()
   await guest.win.getByRole('textbox', { name: 'Jam code' }).fill(results.code)
@@ -63,33 +90,17 @@ try {
   await guest.win.getByText(/2 listening/).waitFor({ timeout: 20000 })
   await host.win.getByText(/2 listening/).waitFor({ timeout: 20000 })
   results.joined = true
-
-  // Guest adds a SoundCloud track by "playing" it (adds to the Jam queue).
-  await guest.win.getByRole('button', { name: 'Search', exact: true }).click()
-  await guest.win.getByRole('checkbox', { name: /Spotify/ }).click()
-  await guest.win.getByRole('checkbox', { name: /Local/ }).click()
-  await guest.win.getByRole('textbox', { name: 'Search', exact: true }).fill('forss flickermood')
-  await guest.win.getByRole('radio', { name: 'Songs' }).click()
-  const row = guest.win.locator('[role=listitem]').first()
-  await row.waitFor({ timeout: 20000 })
-  await row.dblclick()
-  await host.win.getByText(/added by Guest/).waitFor({ timeout: 15000 })
-  results.hostSeesGuestAdd = true
-
-  // Host starts playback; both should play.
-  await host.win.getByRole('button', { name: 'Start playing' }).click()
-  await host.win.getByRole('button', { name: 'Pause' }).first().waitFor({ timeout: 30000 })
   await guest.win.getByRole('button', { name: 'Pause' }).first().waitFor({ timeout: 30000 })
-  await host.win.waitForTimeout(6000)
-  const clock = (w) =>
-    w.evaluate(
-      () => document.querySelector('[aria-label="Seek"]')?.previousElementSibling?.textContent
-    )
+  await host.win.waitForTimeout(4000)
   results.hostClock = await clock(host.win)
   results.guestClock = await clock(guest.win)
-  const title = (w) => w.locator('footer p, [class*="text-md font-medium"]').first().textContent()
   results.hostTitle = await title(host.win).catch(() => null)
   results.guestTitle = await title(guest.win).catch(() => null)
+
+  // Guest adds a song by "playing" it (adds to the Jam queue).
+  await (await search(guest.win, 'forss soulhack')).dblclick()
+  await host.win.getByText(/added by Guest/).first().waitFor({ timeout: 15000 })
+  results.hostSeesGuestAdd = true
   await host.win.screenshot({ path: 'screenshots/32-jam-host.png' })
   await guest.win.screenshot({ path: 'screenshots/33-jam-guest.png' })
 

@@ -247,6 +247,20 @@ describe('repeat and end of track', () => {
     expect(backend.loads).toEqual(['1'])
   })
 
+  it('marks endedAt when the last song finishes by itself, not on a user next', async () => {
+    await c.playTracks([track(1)], 0)
+    expect(c.getState().endedAt).toBeUndefined()
+    await c.next()
+    expect(c.getState().endedAt).toBeUndefined()
+    await c.playTracks([track(1)], 0)
+    backend.position = 179_000
+    backend.playing = false
+    backend.emit({ type: 'ended' })
+    await flush()
+    expect(c.getState().endedAt).toBe(1)
+    expect(c.getState().status).toBe('paused')
+  })
+
   it('user next with repeat one advances', async () => {
     await c.playTracks([track(1), track(2)], 0)
     c.cycleRepeat()

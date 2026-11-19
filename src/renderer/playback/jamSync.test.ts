@@ -11,6 +11,7 @@ import type {
   JamUnplayable
 } from '@shared/jam'
 import type { Track } from '@shared/types'
+import { fromJamTrack, toJamTrack } from '@shared/jam'
 import {
   bindJamSync,
   DRIFT_MS,
@@ -29,6 +30,8 @@ function fakeController(): {
     position: number
     broken: Map<string, string>
     end(): void
+    endPauseFirst(): void
+    setLocal(p: Partial<PlaybackState>): void
   }
 } {
   let state: PlaybackState = {
@@ -43,6 +46,7 @@ function fakeController(): {
     repeat: 'all'
   }
   let wantPlay = false
+  let ends = 0
   const listeners = new Set<(s: PlaybackState) => void>()
   const emit = (p: Partial<PlaybackState>): void => {
     state = { ...state, ...p }
@@ -56,7 +60,21 @@ function fakeController(): {
     end(): void {
       fake.position = 0
       wantPlay = false
-      emit({ status: 'paused', positionMs: 0 })
+      emit({ status: 'paused', positionMs: 0, endedAt: ++ends })
+    },
+    /**
+     * What a real <audio> element does at the end: a 'pause' event first (the
+     * controller reports paused mid-position), then 'ended' (paused at 0).
+     */
+    /** Set what the local player shows (before a Jam starts). */
+    setLocal(p: Partial<PlaybackState>): void {
+      emit(p)
+    },
+    endPauseFirst(): void {
+      wantPlay = false
+      emit({ status: 'paused', positionMs: fake.position })
+      fake.position = 0
+      emit({ status: 'paused', positionMs: 0, endedAt: ++ends })
     }
   }
   const c: JamSyncController = {
@@ -284,6 +302,14 @@ describe('following the room', () => {
 })
 
 describe('end of a track', () => {
+  it('the host reports ended when the player pauses just before the end (auto-advance)', async () => {
+    setStatus({ role: 'host', room: room() })
+    await flush()
+    ctl.fake.position = 179_000
+    ctl.fake.endPauseFirst()
+    expect(sent()).toEqual([{ type: 'ended', entryId: 'e1' }])
+  })
+
   it('the host reports ended once; a guest just waits', async () => {
     setStatus({ role: 'host', room: room() })
     await flush()
@@ -479,5 +505,103 @@ describe('leaving', () => {
     unbind()
     expect(ctl.c.toggle).toBe(toggle)
     expect(statusListeners.size).toBe(0)
+  })
+})
+
+describe('starting a Jam carries over what the host is playing (QoL 3)', () => {
+  const t = (id: string): Track => fromJamTrack(jt(id))
+  const local = (id: string): Track => ({
+    id: `local:${id}`,
+    provider: 'local',
+    nativeId: id,
+    title: id,
+    artists: [],
+    durationMs: 1000
+  })
+  const empty = (): JamRoomState => room({ queue: [], currentIndex: -1, playing: false })
+
+  it('host: the current song and the rest of the queue go in, playing from the same spot', async () => {
+    ctl.fake.setLocal({
+      status: 'playing',
+      current: { uid: 'x', track: t('a') },
+      queue: [{ uid: 'y', track: t('b') }]
+    })
+    ctl.fake.position = 42_000
+    setStatus({ role: 'host', room: empty() })
+    await flush()
+    expect(sent()).toEqual([
+      { type: 'add', tracks: [toJamTrack(t('a')), toJamTrack(t('b'))] },
+      { type: 'play', index: 0, positionMs: 42_000 }
+    ])
+  })
+
+  it('the carried-over position is not undone by the auto start while the room catches up', async () => {
+    ctl.fake.setLocal({ status: 'playing', current: { uid: 'x', track: t('a') }, queue: [] })
+    ctl.fake.position = 42_000
+    setStatus({ role: 'host', room: empty() })
+    await flush()
+    // The relay applies the add first: songs queued, nothing current yet.
+    setStatus({ role: 'host', room: room({ queue: [entry(1)], currentIndex: -1, playing: false }) })
+    await flush()
+    tick()
+    expect(sent().filter((c) => c.type === 'play')).toEqual([
+      { type: 'play', index: 0, positionMs: 42_000 }
+    ])
+  })
+
+  it('host was paused: the room starts paused at the same spot', async () => {
+    ctl.fake.setLocal({ status: 'paused', current: { uid: 'x', track: t('a') }, queue: [] })
+    ctl.fake.position = 5_000
+    setStatus({ role: 'host', room: empty() })
+    await flush()
+    expect(sent()).toEqual([
+      { type: 'add', tracks: [toJamTrack(t('a'))] },
+      { type: 'play', index: 0, positionMs: 5_000 },
+      { type: 'pause', positionMs: 5_000 }
+    ])
+  })
+
+  it("host playing a local file: it can't be shared, so the room starts at the next song", async () => {
+    ctl.fake.setLocal({
+      status: 'playing',
+      current: { uid: 'x', track: local('mine') },
+      queue: [{ uid: 'y', track: t('b') }]
+    })
+    ctl.fake.position = 30_000
+    setStatus({ role: 'host', room: empty() })
+    await flush()
+    expect(sent()).toEqual([
+      { type: 'add', tracks: [toJamTrack(t('b'))] },
+      { type: 'play', index: 0, positionMs: 0 }
+    ])
+  })
+
+  it('a guest joining never sends their own queue', async () => {
+    ctl.fake.setLocal({ status: 'playing', current: { uid: 'x', track: t('a') }, queue: [] })
+    setStatus({ role: 'guest', room: room() })
+    await flush()
+    expect(sent().filter((c) => c.type === 'add' || c.type === 'play')).toEqual([])
+  })
+
+  it('no Start playing step: once songs are queued, the host starts the first one', async () => {
+    setStatus({ role: 'host', room: room({ currentIndex: -1, playing: false }) })
+    await flush()
+    tick()
+    expect(sent().filter((c) => c.type === 'play')).toEqual([{ type: 'play', index: 0 }])
+  })
+
+  it('after the queue ran out, a newly added song starts playing', async () => {
+    setStatus({ role: 'host', room: room({ queue: [entry(1)], currentIndex: 0, positionMs: 0 }) })
+    await flush()
+    ctl.fake.end()
+    expect(sent()).toContainEqual({ type: 'ended', entryId: 'e1' })
+    // The relay stops on the last song; then someone adds another.
+    setStatus({
+      role: 'host',
+      room: room({ queue: [entry(1), entry(2)], currentIndex: 0, playing: false, positionMs: 0 })
+    })
+    await flush()
+    tick()
+    expect(sent().filter((c) => c.type === 'next')).toEqual([{ type: 'next' }])
   })
 })

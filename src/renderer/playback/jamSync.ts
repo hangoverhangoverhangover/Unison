@@ -16,7 +16,7 @@
 // The engine itself drives playback through the original methods it saved at bind time.
 
 import type { FindResult } from '@shared/match'
-import type { PlaybackState, PlaybackStatus, RepeatMode } from '@shared/playback'
+import type { PlaybackState, RepeatMode } from '@shared/playback'
 import type { Track } from '@shared/types'
 import {
   fromJamTrack,
@@ -145,7 +145,13 @@ export function bindJamSync(controller: JamSyncController, deps: JamSyncDeps): (
   /** Spotify refused playback for this account (e.g. not Premium). */
   let spotifyRefused = false
   let lastBaseSpotify = deps.getCapabilities().spotify
-  let prevLocal: PlaybackStatus = controller.getState().status
+  let lastEndedAt = controller.getState().endedAt
+  /** Host: what was playing locally when the Jam started, to carry into the new room. */
+  let carry: { tracks: Track[]; positionMs: number; playing: boolean } | null = null
+  /** Host: key of the last auto-start / auto-next sent (once per situation). */
+  let autoSent: string | null = null
+  /** Host: the carried-over songs were sent; their own play command is on its way. */
+  let carrySent = false
   let disposed = false
 
   const isHost = (): boolean => status.role === 'host'
@@ -310,9 +316,59 @@ export function bindJamSync(controller: JamSyncController, deps: JamSyncDeps): (
     if (Math.abs(controller.getPositionMs() - d) > DRIFT_MS) orig.seek(d)
   }
 
+  /**
+   * Host, new room: put in what was playing locally (current song first, then the
+   * rest of the queue; local files can't be shared) and start it at the same spot,
+   * playing or paused as it was. No "Start playing" step.
+   */
+  const carryOver = (room: JamRoomState): boolean => {
+    if (!carry) return false
+    const c = carry
+    carry = null
+    if (!isHost() || room.queue.length > 0 || room.currentIndex >= 0) return false
+    const [first, ...rest] = c.tracks
+    const firstShared = first ? toJamTrack(first) : null
+    const tracks = [firstShared, ...rest.map(toJamTrack)].filter((t) => t !== null)
+    if (tracks.length === 0) return false
+    const positionMs = firstShared ? Math.round(c.positionMs) : 0
+    send({ type: 'add', tracks })
+    send({ type: 'play', index: 0, positionMs })
+    if (!c.playing) send({ type: 'pause', positionMs })
+    carrySent = true
+    return true
+  }
+
+  /**
+   * Host: songs waiting with nothing playing start by themselves (the first song of
+   * a room, or a song added after the queue ran out).
+   */
+  const autoStart = (room: JamRoomState): void => {
+    if (!isHost() || room.queue.length === 0) return
+    if (room.currentIndex < 0) {
+      // The carried-over songs bring their own play (with the position): wait for it.
+      if (carrySent) return
+      const key = `start:${room.queue[0]!.entryId}`
+      if (autoSent === key) return
+      autoSent = key
+      send({ type: 'play', index: 0 })
+      return
+    }
+    const entry = currentEntry(room)
+    const finished = !room.playing && !!entry && endedEntryId === entry.entryId
+    if (finished && room.currentIndex < room.queue.length - 1) {
+      const key = `next:${entry!.entryId}`
+      if (autoSent === key) return
+      autoSent = key
+      send({ type: 'next' })
+    }
+  }
+
   const reconcile = (): void => {
     const room = status.room
     if (!active || status.state !== 'connected' || !room) return
+    if (carryOver(room)) return
+    if (room.currentIndex >= 0) carrySent = false
+    autoStart(room)
     const entry = currentEntry(room)
     if (!entry) {
       if (loadedEntryId !== null) {
@@ -336,14 +392,13 @@ export function bindJamSync(controller: JamSyncController, deps: JamSyncDeps): (
   }
 
   const onLocal = (s: PlaybackState): void => {
-    const prev = prevLocal
-    prevLocal = s.status
-    if (!active || (mode !== 'playing' && mode !== 'substitute') || !loadedEntryId) return
-    // The controller stops at the end of its one-track queue: paused, back at 0.
-    if (prev === 'playing' && s.status === 'paused' && s.positionMs === 0 && s.current) {
-      endedEntryId = loadedEntryId
-      sendEnded(loadedEntryId)
-    }
+    // The controller bumps endedAt when its one-track queue runs out on its own. (A
+    // status change can't be trusted: an <audio> element reports a pause first.)
+    const ended = s.endedAt !== lastEndedAt
+    lastEndedAt = s.endedAt
+    if (!ended || !active || (mode !== 'playing' && mode !== 'substitute') || !loadedEntryId) return
+    endedEntryId = loadedEntryId
+    sendEnded(loadedEntryId)
   }
 
   // -------------------------------------------------------------------------------------
@@ -415,6 +470,15 @@ export function bindJamSync(controller: JamSyncController, deps: JamSyncDeps): (
 
   const enter = (): void => {
     active = true
+    // Remember what was playing, for the host to carry into a new room.
+    const local = controller.getState()
+    carry = local.current
+      ? {
+          tracks: [local.current.track, ...local.queue.map((i) => i.track)],
+          positionMs: controller.getPositionMs(),
+          playing: local.status === 'playing' || local.status === 'loading'
+        }
+      : null
     savedRepeat = controller.getState().repeat
     for (let i = 0; i < 3 && controller.getState().repeat !== 'off'; i++) orig.cycleRepeat()
     // Whatever was playing from the local queue stops; the room's entry takes over.
@@ -436,6 +500,9 @@ export function bindJamSync(controller: JamSyncController, deps: JamSyncDeps): (
     endedEntryId = null
     endedSent = null
     blockSent = null
+    carry = null
+    autoSent = null
+    carrySent = false
     deps.report({ substitute: null, skipped: null, notice: null })
   }
 

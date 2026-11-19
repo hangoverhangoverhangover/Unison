@@ -28,6 +28,11 @@ export interface PlaybackState {
   shuffle: boolean
   repeat: RepeatMode
   error?: string
+  /**
+   * Bumped each time playback ran off the end of the queue on its own (the last
+   * song finished). Lets listeners (the Jam) tell "the song ended" apart from a pause.
+   */
+  endedAt?: number
 }
 
 /** A hardware media key, caught system-wide by main while the app has a track loaded. */

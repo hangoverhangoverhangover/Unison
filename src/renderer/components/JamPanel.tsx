@@ -283,14 +283,6 @@ function Room(): React.JSX.Element {
           ))}
         </ul>
       )}
-      {isHost && room.currentIndex < 0 && room.queue.length > 0 && (
-        <button
-          onClick={() => void useJam.getState().send({ type: 'play', index: 0 })}
-          className={`${pill} mt-3 bg-accent text-on-accent hover:bg-accent-hover`}
-        >
-          Start playing
-        </button>
-      )}
 
       <div className="mt-6 border-t border-divider pt-3">
         {confirmLeave ? (
