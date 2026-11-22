@@ -13,6 +13,8 @@ export interface TrayOptions {
   toggleMini(): void
   /** Read on every close so the Settings switch applies at once. */
   closeToTray(): boolean
+  /** What's playing changed (the taskbar buttons follow it). */
+  onNowPlaying?(now: NowPlaying | null): void
 }
 
 /** Tooltip text is capped by Windows at 127 characters. */
@@ -83,6 +85,7 @@ export function registerTray(opts: TrayOptions): {
   handle('tray:nowPlaying', (next) => {
     now = next && typeof next.title === 'string' ? next : null
     rebuild()
+    opts.onNowPlaying?.(now)
   })
   rebuild()
 

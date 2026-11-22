@@ -28,6 +28,7 @@ import { registerLyrics } from './lyrics'
 import { registerTheme } from './theme'
 import { registerUpdates } from './updates'
 import { registerTitles } from './titles'
+import { createThumbar } from './thumbar'
 import { registerSettings } from './settings'
 import { registerTray } from './tray'
 import { registerTransfer } from './transfer'
@@ -254,7 +255,9 @@ app.whenReady().then(async () => {
       return { ...p, jamRelayUrl: p.jamRelayUrl || keys.jamRelayUrl }
     }
   })
+  const thumbar = createThumbar({ send: (key) => emit(getWebContents(), 'media:key', key) })
   const tray = registerTray({
+    onNowPlaying: (now) => thumbar.update(mainWindow, { playing: !!now?.playing, hasTrack: !!now }),
     getMainWindow: () => mainWindow,
     openMainWindow: () => openMain(),
     send: (key) => emit(getWebContents(), 'media:key', key),
@@ -314,6 +317,9 @@ app.whenReady().then(async () => {
     const win = mainWindow
     // Close to tray: hide instead of closing, so playback keeps going.
     win.on('close', (e) => tray.onMainClose(e, win))
+    // Taskbar Previous / Play / Next (Windows drops them when the window is hidden).
+    win.once('ready-to-show', () => thumbar.apply(win))
+    win.on('show', () => thumbar.apply(win))
     mainWindow.on('closed', () => {
       mainWindow = null
       // The mini player only controls the main window's playback; it goes with it.
