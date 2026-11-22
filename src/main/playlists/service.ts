@@ -5,7 +5,9 @@ import type { ServiceProvider } from '@shared/ipc'
 import { artworkUrl, type PlaylistPrefs } from '@shared/library'
 import type { MusicProvider, PlaylistEditor } from '@shared/provider'
 import type { Playlist, Track } from '@shared/types'
+import type { AlreadyInPlaylist } from '@shared/transfer'
 import { notConnectedMessage } from '../music/router'
+import { findAlreadyIn } from '../transfer/duplicates'
 import { AppPlaylistStore, isAppPlaylistId, validateTracks } from './store'
 
 export type EditableProvider = MusicProvider & Partial<PlaylistEditor>
@@ -74,6 +76,8 @@ export interface PlaylistService {
   rename(playlistId: string, name: string): Playlist
   delete(playlistId: string): void
   addTracks(playlistId: string, tracks: Track[]): Promise<void>
+  /** Which of these songs the playlist already has (QoL 4). */
+  checkAdd(playlistId: string, tracks: Track[]): Promise<AlreadyInPlaylist[]>
   removeAt(playlistId: string, positions: number[]): Promise<void>
   move(playlistId: string, from: number, to: number): void
   /** Pick an image for an app playlist; null when the dialog was cancelled. */
@@ -205,6 +209,15 @@ export function createPlaylistService(deps: PlaylistServiceDeps): PlaylistServic
     getPrefs: () => (deps.prefs ? deps.prefs.read() : { order: [], hidden: [] }),
 
     setPrefs: (prefs) => prefsStore().write(prefs),
+
+    async checkAdd(playlistId, tracks) {
+      const list = validateTracks(tracks)
+      if (list.length === 0) return []
+      const existing = isAppPlaylistId(playlistId)
+        ? store.getTracks(playlistId)
+        : await deps.getServicePlaylistTracks(playlistId)
+      return findAlreadyIn(list, existing)
+    },
 
     async addTracks(playlistId, tracks) {
       const list = validateTracks(tracks)

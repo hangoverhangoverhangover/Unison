@@ -4,6 +4,7 @@ import { SHORTCUTS } from '@renderer/lib/shortcuts'
 import { ipcMessage } from '@renderer/state/services'
 import Switch from './Switch'
 import DiscordRow from './DiscordSection'
+import { useAddCheck } from '@renderer/state/addCheck'
 
 function Row({
   title,
@@ -22,6 +23,20 @@ function Row({
       </div>
       {children}
     </div>
+  )
+}
+
+/** Ask before adding songs a playlist already has (QoL 4; saved on this computer). */
+function AskDuplicatesRow(): React.JSX.Element {
+  const ask = useAddCheck((s) => s.ask)
+  const setAsk = useAddCheck((s) => s.setAsk)
+  return (
+    <Row
+      title="Ask before adding duplicates"
+      body="When a song you add to a playlist is already in it (or the same song from another service), ask first."
+    >
+      <Switch label="Ask before adding duplicates" checked={ask} onChange={setAsk} />
+    </Row>
   )
 }
 
@@ -66,6 +81,7 @@ export function BehaviourSection(): React.JSX.Element {
           onChange={(v) => void set({ autoDownloadLikes: v })}
         />
       </Row>
+      <AskDuplicatesRow />
       <Row
         title="Tidy SoundCloud titles"
         body="Archive uploads like “Artist - Title” show and scrobble with the real artist and title. Right-click a song to fix a wrong guess."

@@ -11,6 +11,16 @@ import type { Track } from './types'
  */
 export type MatchConfidence = 'isrc' | 'exact' | 'close'
 
+/** A song being added that a playlist already has (QoL 4). */
+export interface AlreadyInPlaylist {
+  /** The song being added. */
+  track: Track
+  /** The playlist's copy. */
+  match: Track
+  /** The very same track (same id), not just the same song on another service. */
+  sameTrack: boolean
+}
+
 export interface TransferCandidate {
   /** The track in the source playlist. */
   source: Track

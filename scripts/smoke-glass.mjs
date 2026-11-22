@@ -544,6 +544,29 @@ try {
     await shot('artwork-lyrics-resync')
   }
 
+  if (want('dupes')) {
+    // Adding a song a playlist already has asks first.
+    await go('Local Files')
+    await win.getByRole('radio', { name: 'Unsorted' }).click()
+    const row = win.getByRole('listitem').filter({ hasText: 'Night Shift' }).first()
+    await row.click({ button: 'right' })
+    await win.getByRole('menuitem', { name: 'Add to playlist' }).hover()
+    await win.getByRole('menuitem', { name: 'New playlist' }).click()
+    await win.waitForTimeout(800)
+    await go('Local Files')
+    await win.getByRole('radio', { name: 'Unsorted' }).click()
+    await row.click({ button: 'right' })
+    await win.getByRole('menuitem', { name: 'Add to playlist' }).hover()
+    await win
+      .getByRole('menuitem', { name: /^New playlist$/ })
+      .nth(1)
+      .click()
+    await win.getByRole('dialog').waitFor({ timeout: 5000 })
+    await shot('artwork-dupes-ask')
+    console.log('dupes dialog:', await win.getByRole('dialog').locator('h2').first().textContent())
+    await win.getByRole('button', { name: "Don't add" }).click()
+  }
+
   if (want('theme')) {
     // Custom theme: pick it, change colours, glass and font, use a picture, then save
     // the theme to a file and load it back.

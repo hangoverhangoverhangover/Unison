@@ -1,6 +1,6 @@
 // duplicates:find / duplicates:dismiss: same-song groups across Liked Songs and local
 // files. Never merges or hides anything by itself; the user confirms every group.
-import type { DuplicateGroup, MatchConfidence } from '@shared/transfer'
+import type { AlreadyInPlaylist, DuplicateGroup, MatchConfidence } from '@shared/transfer'
 import type { Track } from '@shared/types'
 import type { Db } from '../db'
 import { rowToTrack, trackColumns, type TrackRow } from '../db/tracks'
@@ -15,6 +15,33 @@ export const KEY_MAX_LENGTH = 20_000
 export const KEY_SEPARATOR = '|'
 
 const PROVIDER_ORDER: Record<Track['provider'], number> = { spotify: 0, soundcloud: 1, local: 2 }
+
+/**
+ * Songs in `adding` that `existing` already has: the same track, or the same song
+ * (ISRC or matching title and artist, like the Duplicates tab, but not "close" guesses).
+ */
+export function findAlreadyIn(
+  adding: readonly Track[],
+  existing: readonly Track[]
+): AlreadyInPlaylist[] {
+  const byId = new Map(existing.map((t) => [t.id, t]))
+  const shapes = existing.map((t) => ({ t, s: songShape(t) }))
+  const out: AlreadyInPlaylist[] = []
+  for (const track of adding) {
+    const same = byId.get(track.id)
+    if (same) {
+      out.push({ track, match: same, sameTrack: true })
+      continue
+    }
+    const shape = songShape(track)
+    const hit = shapes.find(({ s }) => {
+      const c = compareShapes(shape, s)
+      return c === 'isrc' || c === 'exact'
+    })
+    if (hit) out.push({ track, match: hit.t, sameTrack: false })
+  }
+  return out
+}
 
 /** Stable group key: the sorted track ids joined. */
 export function groupKey(tracks: readonly Pick<Track, 'id'>[]): string {

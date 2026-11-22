@@ -17,7 +17,13 @@ import type {
   StatsRange
 } from './history'
 import type { FilenameTagProposal, PickedCover, TagEdit, TagFileResult } from './tags'
-import type { DuplicateGroup, TransferPlan, TransferRequest, TransferResult } from './transfer'
+import type {
+  AlreadyInPlaylist,
+  DuplicateGroup,
+  TransferPlan,
+  TransferRequest,
+  TransferResult
+} from './transfer'
 import type { AudioSettings, MediaKey, NowPlaying, SessionSnapshot } from './playback'
 import type { FeedPage, ScTrackPage, SoundCloudStatus } from './soundcloud'
 import type { SpotifyClientIdSetting, SpotifyStatus } from './spotify'
@@ -236,6 +242,8 @@ export interface IpcInvokeMap {
    * only that service's tracks and only when `canEdit` (written to the service).
    */
   'playlists:addTracks': (playlistId: string, tracks: Track[]) => void
+  /** Which of these songs the playlist already has (same track or same song). */
+  'playlists:checkAdd': (playlistId: string, tracks: Track[]) => AlreadyInPlaylist[]
   /**
    * Remove entries by their index in the list music:getPlaylistTracks returned. Service
    * playlists remove every occurrence of those tracks (the services work by track).
@@ -472,6 +480,7 @@ const invokeChannels = {
   'playlists:rename': true,
   'playlists:delete': true,
   'playlists:addTracks': true,
+  'playlists:checkAdd': true,
   'playlists:removeAt': true,
   'playlists:move': true,
   'playlists:chooseCover': true,

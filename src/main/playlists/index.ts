@@ -20,6 +20,7 @@ const CHANNELS: InvokeChannel[] = [
   'playlists:rename',
   'playlists:delete',
   'playlists:addTracks',
+  'playlists:checkAdd',
   'playlists:removeAt',
   'playlists:move',
   'playlists:chooseCover',
@@ -84,6 +85,7 @@ export function registerPlaylists(opts: PlaylistsOptions): {
   handle('playlists:rename', (id, name) => service.rename(id, name))
   handle('playlists:delete', (id) => service.delete(id))
   handle('playlists:addTracks', (id, tracks) => service.addTracks(id, tracks))
+  handle('playlists:checkAdd', (id, tracks) => service.checkAdd(id, tracks))
   handle('playlists:removeAt', (id, positions) => service.removeAt(id, positions))
   handle('playlists:move', (id, from, to) => service.move(id, from, to))
   handle('playlists:chooseCover', (id) => service.chooseCover(id))

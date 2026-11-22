@@ -6,6 +6,7 @@ import {
   DISMISSED_KEY,
   DISMISSED_MAX,
   dismissDuplicate,
+  findAlreadyIn,
   findDuplicateGroups,
   findDuplicates,
   groupKey,
@@ -105,6 +106,35 @@ describe('findDuplicateGroups', () => {
     const ms = performance.now() - start
     expect(groups.length).toBeGreaterThan(100)
     expect(ms).toBeLessThan(1000)
+  })
+})
+
+describe('findAlreadyIn (QoL 4)', () => {
+  const playlist = [
+    t('spotify:1', 'Sumo', ['Hi-C']),
+    t('soundcloud:2', 'Glasshouse', ['Neon Harbor'], { isrc: 'USRC17607839' })
+  ]
+
+  it('finds the very same track and the same song on another service', () => {
+    const out = findAlreadyIn(
+      [
+        t('spotify:1', 'Sumo', ['Hi-C']),
+        t('soundcloud:9', 'Sumo', ['Hi-C']),
+        t('local:5', 'Other', ['X'], { isrc: 'USRC17607839' }),
+        t('spotify:7', 'New Song', ['Hi-C'])
+      ],
+      playlist
+    )
+    expect(out.map((r) => [r.track.id, r.match.id, r.sameTrack])).toEqual([
+      ['spotify:1', 'spotify:1', true],
+      ['soundcloud:9', 'spotify:1', false],
+      ['local:5', 'soundcloud:2', false]
+    ])
+  })
+
+  it('finds nothing for new songs or an empty playlist', () => {
+    expect(findAlreadyIn([t('spotify:8', 'Cobraz', ['Hi-C'])], playlist)).toEqual([])
+    expect(findAlreadyIn(playlist, [])).toEqual([])
   })
 })
 

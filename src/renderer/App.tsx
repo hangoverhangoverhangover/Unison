@@ -44,6 +44,7 @@ import LyricsBar from './components/LyricsBar'
 import LyricsEditor from './components/LyricsEditor'
 import ErrorBoundary from './components/ErrorBoundary'
 import TitleFixDialog from './components/TitleFixDialog'
+import AddCheckDialog from './components/AddCheckDialog'
 import { bindLyrics } from './state/lyrics'
 import { bindHistory } from './playback/historyBridge'
 import { bindLastfm } from './playback/lastfmBridge'
@@ -205,6 +206,7 @@ export default function App(): React.JSX.Element {
       <TagEditorDialog />
       <TransferDialog />
       <TitleFixDialog />
+      <AddCheckDialog />
       <ErrorBoundary name="lyrics editor" fallback="hidden">
         <LyricsEditor />
       </ErrorBoundary>

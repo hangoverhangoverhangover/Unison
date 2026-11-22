@@ -1,6 +1,16 @@
 import { create } from 'zustand'
 import type { Playlist, Track } from '@shared/types'
 import { ipcMessage, serviceStore, type Load } from './services'
+import { tracksFor, useAddCheck } from './addCheck'
+
+/** A playlist's name, from the app list or a service's loaded playlists. */
+function playlistName(id: string, app: Playlist[]): string {
+  const own = app.find((p) => p.id === id)
+  if (own) return own.name
+  const provider = id.startsWith('soundcloud:') ? 'soundcloud' : 'spotify'
+  const loaded = serviceStore(provider).getState().playlists
+  return (loaded.state === 'ok' && loaded.data.find((p) => p.id === id)?.name) || 'this playlist'
+}
 
 interface PlaylistsState {
   /** In-app playlists (source 'app'), newest first. */
@@ -76,7 +86,19 @@ export const usePlaylists = create<PlaylistsState>((set, get) => {
       await attempt(() => window.api.invoke('playlists:delete', id))
     },
     addTracks: async (id, tracks) => {
-      await attempt(() => window.api.invoke('playlists:addTracks', id, tracks))
+      let list = tracks
+      // Songs the playlist already has: ask first (a failed check just adds).
+      if (useAddCheck.getState().ask && tracks.length > 0) {
+        const matches = await window.api.invoke('playlists:checkAdd', id, tracks).catch(() => [])
+        if (matches.length > 0) {
+          const choice = await useAddCheck
+            .getState()
+            .confirm({ playlistName: playlistName(id, get().app), tracks, matches })
+          list = tracksFor(choice, tracks, matches)
+        }
+      }
+      if (list.length === 0) return
+      await attempt(() => window.api.invoke('playlists:addTracks', id, list))
     },
     removeAt: async (id, positions) => {
       await attempt(() => window.api.invoke('playlists:removeAt', id, positions))
