@@ -138,7 +138,8 @@ describe('mapTrack', () => {
       durationMs: 244108,
       artworkUrl: 'https://i1.sndcdn.com/artworks-abc-X2W-cfzNYA-t500x500.jpg',
       isrc: 'USX123',
-      artistRefs: [{ id: 'soundcloud:9', name: 'Real Artist' }]
+      artistRefs: [{ id: 'soundcloud:9', name: 'Real Artist' }],
+      uploader: 'uploader'
     })
   })
 

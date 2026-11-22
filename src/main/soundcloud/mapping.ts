@@ -271,7 +271,15 @@ export function mapTrack(raw: ScTrack | null | undefined): Track | null {
   }
   const availability = classifyAvailability(raw)
   if (availability) track.availability = availability
-  return track
+  const uploader = raw.user?.username?.trim()
+  if (uploader) track.uploader = uploader
+  return titleCleaner ? titleCleaner(track) : track
+}
+
+/** Set at startup (QoL 4): tidies archive titles; see main/titles. Tests leave it unset. */
+let titleCleaner: ((track: Track) => Track) | null = null
+export function setTitleCleaner(fn: ((track: Track) => Track) | null): void {
+  titleCleaner = fn
 }
 
 export function mapLike(raw: ScLike | null | undefined): LikedTrack | null {

@@ -27,6 +27,7 @@ import { registerLastfm } from './lastfm'
 import { registerLyrics } from './lyrics'
 import { registerTheme } from './theme'
 import { registerUpdates } from './updates'
+import { registerTitles } from './titles'
 import { registerSettings } from './settings'
 import { registerTray } from './tray'
 import { registerTransfer } from './transfer'
@@ -200,6 +201,12 @@ app.whenReady().then(async () => {
   })
   const mediaKeys = registerMediaKeys((key) => emit(getWebContents(), 'media:key', key))
   const settings = registerSettings({ db, getWebContents })
+  // Before any SoundCloud track is mapped: tidies archive titles (QoL 4).
+  const titles = registerTitles({
+    db,
+    getWebContents,
+    enabled: () => settings.getPrefs().tidyScTitles
+  })
   // Caption buttons follow the theme (glass UI).
   settings.onPrefsChanged((prefs) => {
     if (mainWindow && !mainWindow.isDestroyed()) {
@@ -287,6 +294,7 @@ app.whenReady().then(async () => {
     () => lyrics.dispose(),
     () => theme.dispose(),
     () => updates.dispose(),
+    () => titles.dispose(),
     () => settings.dispose(),
     () => tray.dispose(),
     () => transfer.dispose(),

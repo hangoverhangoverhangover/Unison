@@ -66,6 +66,17 @@ export function BehaviourSection(): React.JSX.Element {
           onChange={(v) => void set({ autoDownloadLikes: v })}
         />
       </Row>
+      <Row
+        title="Tidy SoundCloud titles"
+        body="Archive uploads like “Artist - Title” show and scrobble with the real artist and title. Right-click a song to fix a wrong guess."
+      >
+        <Switch
+          label="Tidy SoundCloud titles"
+          checked={!!prefs?.tidyScTitles}
+          disabled={!prefs}
+          onChange={(v) => void set({ tidyScTitles: v })}
+        />
+      </Row>
       <DiscordRow />
       {error && <p className="text-sm text-danger">{error}</p>}
     </section>

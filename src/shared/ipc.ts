@@ -7,6 +7,7 @@ import type { JamCapabilities, JamCommand, JamStatus } from './jam'
 import type { LastfmStatus, ScrobbleReport } from './lastfm'
 import type { LyricsResult } from './lyrics'
 import type { UpdateStatus } from './updates'
+import type { TitleOverride } from './scTitle'
 import type {
   ListeningStats,
   PlayReport,
@@ -137,6 +138,12 @@ export interface IpcInvokeMap {
   'updates:check': () => UpdateStatus
   /** Restart into a downloaded update. */
   'updates:install': () => void
+
+  // QoL 4: SoundCloud title cleanup
+  /** Your fix for a track: its title and artists, 'original' (keep as uploaded), or null. */
+  'titles:getOverride': (trackId: string) => TitleOverride | 'original' | null
+  /** Save (or with null, clear) your fix; applies the next time the track loads. */
+  'titles:setOverride': (trackId: string, value: TitleOverride | 'original' | null) => void
   /** Newest first, one entry per play. */
   'history:recent': (limit: number) => RecentPlay[]
   'history:smart': (kind: SmartPlaylistKind) => SmartPlaylist
@@ -333,6 +340,8 @@ export interface IpcEventMap {
   'history:changed': null
   'lastfm:status': LastfmStatus
   'updates:status': UpdateStatus
+  /** A track's title fix changed (its id). */
+  'titles:changed': string
   /** transfer:plan progress. */
   'transfer:progress': { done: number; total: number }
   'prefs:changed': AppPrefs
@@ -419,6 +428,8 @@ const invokeChannels = {
   'updates:getStatus': true,
   'updates:check': true,
   'updates:install': true,
+  'titles:getOverride': true,
+  'titles:setOverride': true,
   'history:recent': true,
   'history:smart': true,
   'history:stats': true,
@@ -510,6 +521,7 @@ const eventChannels = {
   'history:changed': true,
   'lastfm:status': true,
   'updates:status': true,
+  'titles:changed': true,
   'transfer:progress': true,
   'prefs:changed': true,
   'mini:open': true,

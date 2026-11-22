@@ -10,6 +10,7 @@ import {
   classifyError,
   enqueue,
   shouldScrobble,
+  toQueued,
   type QueuedScrobble
 } from './core'
 
@@ -97,6 +98,22 @@ describe('queue', () => {
       'track[1]': 'U',
       'timestamp[1]': '200'
     })
+  })
+})
+
+describe('toQueued (QoL 4)', () => {
+  it('sends the main artist, and strips archive labels from SoundCloud titles', () => {
+    expect(toQueued(track('spotify'), 0).artist).toBe('Neon Harbor')
+    const sc = track('soundcloud', { title: 'Sumo (unreleased) [CDQ]', artists: ['Hi C X DOMD'] })
+    expect(toQueued(sc, 0)).toMatchObject({ artist: 'Hi C X DOMD', track: 'Sumo' })
+    expect(toQueued(track('spotify', { title: 'Sumo (unreleased)' }), 0).track).toBe(
+      'Sumo (unreleased)'
+    )
+  })
+
+  it('sends every artist from your own fix as one string', () => {
+    const fixed = track('soundcloud', { artists: ['Hi-C', 'DOMD'], titleGuess: 'user' })
+    expect(toQueued(fixed, 0).artist).toBe('Hi-C, DOMD')
   })
 })
 

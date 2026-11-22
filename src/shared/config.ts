@@ -55,6 +55,8 @@ export interface AppPrefs {
   closeToTray: boolean
   /** New SoundCloud likes are downloaded in the background. */
   autoDownloadLikes: boolean
+  /** Tidy SoundCloud archive titles ("Artist - Title" uploads); QoL 4. */
+  tidyScTitles: boolean
   /** Jam relay base URL (https://…). Empty = use the built-in relay. */
   jamRelayUrl: string
   /** Name shown to others in a Jam. */
@@ -77,6 +79,7 @@ export interface AppPrefs {
 export const DEFAULT_APP_PREFS: AppPrefs = {
   closeToTray: true,
   autoDownloadLikes: false,
+  tidyScTitles: true,
   jamRelayUrl: '',
   jamName: '',
   jamUnplayable: 'match',

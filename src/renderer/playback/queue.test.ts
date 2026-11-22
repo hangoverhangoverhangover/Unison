@@ -337,3 +337,14 @@ describe('whole list stays in play (QoL 3)', () => {
     expect(ids(s.upcoming)).toEqual(['a', '5', '6'])
   })
 })
+
+describe('updateTrack (QoL 4)', () => {
+  it('changes the track wherever it sits, leaving the rest alone', () => {
+    const deps = { uid: seqUid() }
+    let q = Q.playTracks(Q.emptyQueue, tracks(1, 2, 1, 3), 1, deps)
+    q = Q.updateTrack(q, 'local:1', { title: 'Fixed' })
+    expect(q.history.map((i) => i.track.title)).toEqual(['Fixed'])
+    expect(q.current?.track.title).toBe('Track 2')
+    expect(q.upcoming.map((i) => i.track.title)).toEqual(['Fixed', 'Track 3'])
+  })
+})

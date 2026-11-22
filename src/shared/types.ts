@@ -35,6 +35,16 @@ export interface Track {
    * preview and blocked tracks and the queue skips them.
    */
   availability?: TrackAvailability
+  /** SoundCloud: the account that uploaded it (may differ from the shown artist). */
+  uploader?: string
+  /**
+   * SoundCloud, set when the title was tidied (QoL 4): the title as uploaded, and why
+   * it changed. `titleGuess` medium means a guess from how the uploader names songs.
+   */
+  originalTitle?: string
+  originalArtist?: string
+  titleNote?: string
+  titleGuess?: 'high' | 'medium' | 'user'
 }
 
 export type TrackAvailability = 'full' | 'preview' | 'blocked' | 'drm'

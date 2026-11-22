@@ -1,6 +1,7 @@
 // Last.fm pure helpers: request signing, what to scrobble, the offline queue and how to
 // treat errors. No Electron, no network: see ./service.ts for those.
 import { createHash } from 'crypto'
+import { stripArchiveNoise } from '@shared/scTitle'
 import type { Track } from '@shared/types'
 
 /** Scrobbles sent per request (Last.fm's batch limit). */
@@ -46,8 +47,18 @@ export function shouldScrobble(track: Track, scrobbleSpotify: boolean): boolean 
 
 export function toQueued(track: Track, startedAt: number): QueuedScrobble {
   const q: QueuedScrobble = {
-    artist: track.artists[0]!.trim(),
-    track: track.title.trim(),
+    // Several artists from your own title fix go as one string, like collabs; otherwise
+    // the main artist (Spotify lists features as extra artists).
+    artist:
+      track.titleGuess === 'user'
+        ? track.artists
+            .map((a) => a.trim())
+            .filter(Boolean)
+            .join(', ')
+        : track.artists[0]!.trim(),
+    // Archive labels like "(unreleased)" or "[CDQ]" don't belong on Last.fm.
+    track:
+      track.provider === 'soundcloud' ? stripArchiveNoise(track.title.trim()) : track.title.trim(),
     timestamp: Math.floor(startedAt / 1000)
   }
   if (track.album?.trim()) q.album = track.album.trim()

@@ -142,6 +142,18 @@ export function remove(state: QueueState, uid: string): QueueState {
   }
 }
 
+/** Change a track's details (say, a fixed title) everywhere it sits in the queue. */
+export function updateTrack(state: QueueState, trackId: string, patch: Partial<Track>): QueueState {
+  const fix = (i: QueueItem): QueueItem =>
+    i.track.id === trackId ? { ...i, track: { ...i.track, ...patch } } : i
+  return {
+    ...state,
+    current: state.current && fix(state.current),
+    upcoming: state.upcoming.map(fix),
+    history: state.history.map(fix)
+  }
+}
+
 /** Empty upcoming only. Current and history stay. */
 export function clear(state: QueueState): QueueState {
   const keep = new Set(state.history.map((i) => i.uid))

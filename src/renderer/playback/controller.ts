@@ -28,6 +28,8 @@ export interface PlaybackController {
   moveInQueue(from: number, to: number): void
   removeFromQueue(uid: string): void
   clearQueue(): void
+  /** Change a track's details everywhere in the queue (QoL 4: a fixed title). */
+  updateTrack(trackId: string, patch: Partial<Track>): void
   /** Live position, for a requestAnimationFrame progress bar. */
   getPositionMs(): number
   /** Immutable snapshot. */
@@ -523,6 +525,11 @@ export function createPlaybackController(
 
     clearQueue() {
       q = Q.clear(q)
+      emit()
+    },
+
+    updateTrack(trackId, patch) {
+      q = Q.updateTrack(q, trackId, patch)
       emit()
     },
 

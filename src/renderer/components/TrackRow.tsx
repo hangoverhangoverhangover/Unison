@@ -20,6 +20,7 @@ import { useTagEditor } from '@renderer/state/tagEditor'
 import { useLibrary } from '@renderer/state/library'
 import { SERVICE_NAME } from '@renderer/lib/services'
 import EqBars from './EqBars'
+import { useTitleFix } from '@renderer/state/titleFix'
 
 export const ROW_HEIGHT = 56
 export const ROW_GRID =
@@ -163,6 +164,11 @@ export default function TrackRow({
           )}
           {track.provider !== 'local' && <LikeMenuItem track={track} />}
           {track.provider === 'soundcloud' && <DownloadMenuItem track={track} />}
+          {track.provider === 'soundcloud' && (
+            <MenuItem onSelect={() => useTitleFix.getState().open(track)}>
+              Fix artist and title…
+            </MenuItem>
+          )}
           {track.provider === 'local' && (
             <>
               <ContextMenu.Separator className="my-1 h-px bg-divider" />

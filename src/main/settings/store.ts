@@ -194,6 +194,7 @@ function checkBoolean(key: string): (v: unknown) => boolean {
 const VALIDATORS: { [K in keyof AppPrefs]: (v: unknown) => AppPrefs[K] } = {
   closeToTray: checkBoolean('closeToTray'),
   autoDownloadLikes: checkBoolean('autoDownloadLikes'),
+  tidyScTitles: checkBoolean('tidyScTitles'),
   jamRelayUrl: normalizeRelayUrl,
   jamName: normalizeJamName,
   jamUnplayable: (v) => {
