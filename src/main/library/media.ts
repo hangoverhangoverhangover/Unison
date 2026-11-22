@@ -22,12 +22,25 @@ const ART_TYPES: [ext: string, type: string][] = [
   ['gif', 'image/gif']
 ]
 
+/** Player page pictures and videos (QoL 4): player-media/<id>.<ext>. */
+const PLAYER_TYPES: [ext: string, type: string][] = [
+  ['jpg', 'image/jpeg'],
+  ['jpeg', 'image/jpeg'],
+  ['png', 'image/png'],
+  ['webp', 'image/webp'],
+  ['gif', 'image/gif'],
+  ['mp4', 'video/mp4'],
+  ['webm', 'video/webm']
+]
+
 const SHA1 = /^[0-9a-f]{40}$/
 
 export interface MediaSource {
   /** Real path of a local track, or undefined if the id is unknown. */
   lookupLocalPath(nativeId: string): string | undefined
   artworkDir: string
+  /** Player page media folder; media://player/<id> is off without it. */
+  playerDir?: string
 }
 
 function notFound(): Response {
@@ -49,11 +62,28 @@ function body(path: string, start: number, end: number, head: boolean): BodyInit
 }
 
 async function serveAudio(req: Request, path: string): Promise<Response> {
+  return serveRanged(
+    req,
+    path,
+    AUDIO_TYPES[extname(path).toLowerCase()] ?? 'application/octet-stream'
+  )
+}
+
+async function servePlayer(req: Request, dir: string, id: string): Promise<Response> {
+  for (const [ext, type] of PLAYER_TYPES) {
+    const path = join(dir, `${id}.${ext}`)
+    if ((await fileSize(path)) !== null) return serveRanged(req, path, type)
+  }
+  return notFound()
+}
+
+/** A file with byte-range support (audio seeking, video scrubbing). */
+async function serveRanged(req: Request, path: string, type: string): Promise<Response> {
   const size = await fileSize(path)
   if (size === null) return notFound()
   const head = req.method === 'HEAD'
   const headers = new Headers({
-    'Content-Type': AUDIO_TYPES[extname(path).toLowerCase()] ?? 'application/octet-stream',
+    'Content-Type': type,
     'Accept-Ranges': 'bytes',
     'Cache-Control': 'no-cache'
   })
@@ -106,6 +136,7 @@ export function createMediaHandler(source: MediaSource): (req: Request) => Promi
       return path ? serveAudio(req, path) : notFound()
     }
     if (url.hostname === 'art') return serveArt(req, source.artworkDir, id)
+    if (url.hostname === 'player' && source.playerDir) return servePlayer(req, source.playerDir, id)
     return notFound()
   }
 }

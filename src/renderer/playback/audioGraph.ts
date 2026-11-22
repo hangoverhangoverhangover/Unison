@@ -155,6 +155,19 @@ export interface AudioGraph {
   dispose(): void
 }
 
+let readSpectrumFrom: ((out: Uint8Array<ArrayBuffer>) => boolean) | null = null
+
+/**
+ * Frequency levels (0-255) of what plays through the graph: local files and
+ * SoundCloud. False when there's no graph yet (or Spotify, which can't be read).
+ */
+export function readSpectrum(out: Uint8Array<ArrayBuffer>): boolean {
+  return readSpectrumFrom ? readSpectrumFrom(out) : false
+}
+
+/** Bins readSpectrum fills (fftSize / 2). */
+export const SPECTRUM_BINS = 128
+
 export function createAudioGraph(ctx: AudioContextLike): AudioGraph {
   const mix = ctx.createGain()
   const level = ctx.createGain()
@@ -179,6 +192,15 @@ export function createAudioGraph(ctx: AudioContextLike): AudioGraph {
 
   mix.connect(level)
   mix.connect(analyser)
+  // A small second analyser for the Player page's level bars (QoL 4).
+  const spectrum = ctx.createAnalyser()
+  spectrum.fftSize = 256
+  spectrum.smoothingTimeConstant = 0.8
+  mix.connect(spectrum)
+  readSpectrumFrom = (out) => {
+    spectrum.getByteFrequencyData(out)
+    return true
+  }
   level.connect(eq[0] as BiquadFilterNode)
   for (let i = 0; i < eq.length - 1; i++) {
     ;(eq[i] as BiquadFilterNode).connect(eq[i + 1] as BiquadFilterNode)

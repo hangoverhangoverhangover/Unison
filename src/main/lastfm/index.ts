@@ -13,7 +13,8 @@ const CHANNELS: InvokeChannel[] = [
   'lastfm:disconnect',
   'lastfm:setScrobbleSpotify',
   'lastfm:nowPlaying',
-  'lastfm:scrobble'
+  'lastfm:scrobble',
+  'lastfm:artistInfo'
 ]
 
 export function registerLastfm(opts: { db: Db; getWebContents(): WebContents | undefined }): {
@@ -46,6 +47,7 @@ export function registerLastfm(opts: { db: Db; getWebContents(): WebContents | u
   })
   handle('lastfm:nowPlaying', (track) => lastfm.nowPlaying(track))
   handle('lastfm:scrobble', (report) => lastfm.scrobble(report))
+  handle('lastfm:artistInfo', (name) => lastfm.artistInfo(name))
 
   return {
     dispose() {

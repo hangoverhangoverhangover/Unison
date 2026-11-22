@@ -28,7 +28,8 @@ export function registerMediaSchemePrivileges(): void {
 export function registerMediaProtocol(db: Db, userDataDir: string): void {
   const handler = createMediaHandler({
     lookupLocalPath: (nativeId) => getLocalPath(db, nativeId),
-    artworkDir: join(userDataDir, 'artwork')
+    artworkDir: join(userDataDir, 'artwork'),
+    playerDir: join(userDataDir, 'player-media')
   })
   protocol.handle(MEDIA_SCHEME, async (req) => withCors(await handler(req)))
 }

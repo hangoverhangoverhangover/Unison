@@ -3,6 +3,7 @@ import * as Slider from '@radix-ui/react-slider'
 import { AnimatePresence, motion } from 'motion/react'
 import {
   MicVocal,
+  MonitorPlay,
   PanelRight,
   Pause,
   Play,
@@ -243,6 +244,7 @@ export default function PlayBar(): React.JSX.Element {
   const panelOpen = useUi((s) => s.panelOpen)
   const togglePanel = useUi((s) => s.togglePanel)
   const onLyrics = useUi((s) => s.view === 'lyrics')
+  const onPlayer = useUi((s) => s.view === 'player')
   const setView = useUi((s) => s.setView)
   const back = useUi((s) => s.back)
   const jamOn = useJam((s) => s.status.state !== 'off')
@@ -264,6 +266,18 @@ export default function PlayBar(): React.JSX.Element {
         </div>
       </div>
       <div className="flex items-center justify-end gap-1">
+        <IconButton
+          label={onPlayer ? 'Leave the Player' : 'Player'}
+          active={onPlayer}
+          onClick={() => {
+            if (!onPlayer) return setView('player')
+            if (document.fullscreenElement) void document.exitFullscreen()
+            if (useUi.getState().history.length) back()
+            else setView('local')
+          }}
+        >
+          <MonitorPlay size={18} />
+        </IconButton>
         <IconButton
           label={onLyrics ? 'Hide lyrics' : 'Lyrics'}
           active={onLyrics}

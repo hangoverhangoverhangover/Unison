@@ -40,6 +40,9 @@ import LibraryView from './views/LibraryView'
 import SmartView from './views/SmartView'
 import StatsView from './views/StatsView'
 import LyricsView from './views/LyricsView'
+import PlayerView from './views/PlayerView'
+import { bindPlayerPage } from './state/playerPage'
+import { useFullscreen } from './lib/useFullscreen'
 import LyricsBar from './components/LyricsBar'
 import LyricsEditor from './components/LyricsEditor'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -89,6 +92,10 @@ export default function App(): React.JSX.Element {
   useEffect(() => bindHistory(playback), [])
   useEffect(() => bindLastfm(playback), [])
   useEffect(() => bindLyrics(playback), [])
+  useEffect(() => bindPlayerPage(), [])
+  // Full screen on the Player page: just the page and the play bar.
+  const fullscreen = useFullscreen()
+  const theatre = fullscreen && view === 'player'
   useEffect(() => bindHistoryEvents(), [])
   useEffect(() => bindMiniBridge(playback, (open) => useUi.getState().setMiniOpen(open)), [])
   useEffect(() => bindDownloadsEvents(), [])
@@ -98,7 +105,7 @@ export default function App(): React.JSX.Element {
       <ErrorBoundary name="background" fallback="hidden">
         <Ambient />
       </ErrorBoundary>
-      <TitleBar />
+      {!theatre && <TitleBar />}
       <div
         ref={rootRef}
         id="zoom-root"
@@ -108,27 +115,29 @@ export default function App(): React.JSX.Element {
         style={{ zoom }}
       >
         <ErrorBoundary name="sidebar">
-          <Sidebar
-            width={fit.sidebar}
-            handle={
-              <ResizeHandle
-                side="right"
-                label="Resize sidebar"
-                value={fit.sidebar}
-                scale={zoom}
-                onChange={(px) => setDragSidebar(clampSidebarWidth(px))}
-                onCommit={(px) => {
-                  setDragSidebar(null)
-                  setAppearance({ sidebarWidth: clampSidebarWidth(px) })
-                }}
-                onDoubleClick={() =>
-                  setAppearance({
-                    sidebarWidth: fit.sidebar <= SIDEBAR.rail ? SIDEBAR.default : SIDEBAR.rail
-                  })
-                }
-              />
-            }
-          />
+          {!theatre && (
+            <Sidebar
+              width={fit.sidebar}
+              handle={
+                <ResizeHandle
+                  side="right"
+                  label="Resize sidebar"
+                  value={fit.sidebar}
+                  scale={zoom}
+                  onChange={(px) => setDragSidebar(clampSidebarWidth(px))}
+                  onCommit={(px) => {
+                    setDragSidebar(null)
+                    setAppearance({ sidebarWidth: clampSidebarWidth(px) })
+                  }}
+                  onDoubleClick={() =>
+                    setAppearance({
+                      sidebarWidth: fit.sidebar <= SIDEBAR.rail ? SIDEBAR.default : SIDEBAR.rail
+                    })
+                  }
+                />
+              }
+            />
+          )}
         </ErrorBoundary>
         <main className="glass relative min-w-0 flex-1 overflow-hidden rounded-panel">
           <div className="h-full">
@@ -148,6 +157,8 @@ export default function App(): React.JSX.Element {
                 <FollowingView />
               ) : view === 'duplicates' ? (
                 <DuplicatesView />
+              ) : view === 'player' ? (
+                <PlayerView />
               ) : view === 'lyrics' ? (
                 <LyricsView />
               ) : view === 'stats' ? (
@@ -173,7 +184,7 @@ export default function App(): React.JSX.Element {
           </div>
         </main>
         <AnimatePresence>
-          {fit.rightOpen && (
+          {fit.rightOpen && !theatre && (
             <RightPanel
               key="right"
               width={shownRight}

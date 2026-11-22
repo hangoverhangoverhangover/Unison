@@ -12,6 +12,7 @@ import SoundSection from '@renderer/components/SoundSection'
 import AppearanceSection from '@renderer/components/AppearanceSection'
 import LastfmSection from '@renderer/components/LastfmSection'
 import UpdatesSection from '@renderer/components/UpdatesSection'
+import PlayerMediaSection from '@renderer/components/PlayerMediaSection'
 import { useElementWidth } from '@renderer/lib/useElementWidth'
 import JamSection from '@renderer/components/JamSection'
 import ActivePill from '@renderer/components/ActivePill'
@@ -107,6 +108,7 @@ const GROUPS = [
   { id: 'appearance', label: 'Appearance' },
   { id: 'sound', label: 'Sound' },
   { id: 'general', label: 'General' },
+  { id: 'player', label: 'Player' },
   { id: 'jam', label: 'Jam' },
   { id: 'folders', label: 'Music folders' },
   { id: 'shortcuts', label: 'Shortcuts' }
@@ -211,6 +213,9 @@ export default function SettingsView(): React.JSX.Element {
             <Group id="general">
               <BehaviourSection />
               <UpdatesSection />
+            </Group>
+            <Group id="player">
+              <PlayerMediaSection />
             </Group>
             <Group id="jam">
               <JamSection />

@@ -76,8 +76,12 @@ export class FakeAnalyser extends FakeNode {
   constructor() {
     super('analyser')
   }
+  smoothingTimeConstant = 0.8
   getFloatTimeDomainData(buf: Float32Array): void {
     buf.fill(this.amplitude)
+  }
+  getByteFrequencyData(buf: Uint8Array): void {
+    buf.fill(0)
   }
 }
 

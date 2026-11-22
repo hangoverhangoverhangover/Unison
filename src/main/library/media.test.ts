@@ -13,9 +13,11 @@ beforeAll(() => {
   dir = mkdtempSync(join(tmpdir(), 'media-'))
   writeFileSync(join(dir, 'song.mp3'), Buffer.from('0123456789'))
   writeFileSync(join(dir, `${hash}.png`), Buffer.from('png'))
+  writeFileSync(join(dir, `${'d'.repeat(40)}.mp4`), Buffer.from('0123456789'))
   handler = createMediaHandler({
     lookupLocalPath: (n) => (n === id ? join(dir, 'song.mp3') : undefined),
-    artworkDir: dir
+    artworkDir: dir,
+    playerDir: dir
   })
 })
 afterAll(() => rmSync(dir, { recursive: true, force: true }))
@@ -43,6 +45,14 @@ describe('media handler', () => {
     const res = await get(`media://local/${id}`, 'bytes=50-')
     expect(res.status).toBe(416)
     expect(res.headers.get('content-range')).toBe('bytes */10')
+  })
+
+  it('serves Player page videos with ranges (QoL 4)', async () => {
+    const res = await get(`media://player/${'d'.repeat(40)}`, 'bytes=0-3')
+    expect(res.status).toBe(206)
+    expect(res.headers.get('content-type')).toBe('video/mp4')
+    expect(await res.text()).toBe('0123')
+    expect((await get(`media://player/${'e'.repeat(40)}`)).status).toBe(404)
   })
 
   it('serves cached artwork', async () => {

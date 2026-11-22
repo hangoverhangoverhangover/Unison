@@ -2,6 +2,7 @@
 // treat errors. No Electron, no network: see ./service.ts for those.
 import { createHash } from 'crypto'
 import { stripArchiveNoise } from '@shared/scTitle'
+import type { LastfmArtist } from '@shared/lastfm'
 import type { Track } from '@shared/types'
 
 /** Scrobbles sent per request (Last.fm's batch limit). */
@@ -101,4 +102,40 @@ export function classifyError(code: number): 'retry' | 'reauth' | 'drop' {
   if (code === 11 || code === 16 || code === 29) return 'retry'
   if (code === 9) return 'reauth'
   return 'drop'
+}
+
+export type { LastfmArtist }
+
+/** Last.fm's bios are HTML ending in a "Read more on Last.fm" link; keep plain text. */
+export function plainBio(html: string): string {
+  return html
+    .replace(/<a\b[^>]*>\s*Read more on Last\.fm\s*<\/a>\.?/gi, '')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+/** The artist.getInfo reply, or null when it has no artist. */
+export function parseArtistInfo(json: Record<string, unknown>): LastfmArtist | null {
+  const a = json.artist as Record<string, unknown> | undefined
+  if (!a || typeof a.name !== 'string') return null
+  const out: LastfmArtist = { name: a.name, tags: [] }
+  if (typeof a.url === 'string') out.url = a.url
+  const bio = (a.bio as { summary?: unknown } | undefined)?.summary
+  if (typeof bio === 'string' && plainBio(bio)) out.bio = plainBio(bio)
+  const tags = (a.tags as { tag?: unknown } | undefined)?.tag
+  if (Array.isArray(tags))
+    out.tags = tags
+      .map((t) => (t as { name?: unknown })?.name)
+      .filter((n): n is string => typeof n === 'string')
+      .slice(0, 5)
+  const listeners = Number((a.stats as { listeners?: unknown } | undefined)?.listeners)
+  if (Number.isFinite(listeners) && listeners > 0) out.listeners = listeners
+  return out
 }

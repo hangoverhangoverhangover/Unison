@@ -29,6 +29,7 @@ import { registerTheme } from './theme'
 import { registerUpdates } from './updates'
 import { registerTitles } from './titles'
 import { createThumbar } from './thumbar'
+import { registerPlayerMedia } from './player'
 import { registerSettings } from './settings'
 import { registerTray } from './tray'
 import { registerTransfer } from './transfer'
@@ -230,6 +231,11 @@ app.whenReady().then(async () => {
   const lyrics = registerLyrics({ db })
   const theme = registerTheme({ db, getWebContents })
   const updates = registerUpdates({ getWebContents })
+  const playerMedia = registerPlayerMedia({
+    db,
+    userDataDir: app.getPath('userData'),
+    getWebContents
+  })
   const transfer = registerTransfer({
     db,
     getProvider: (p) => providers[p],
@@ -298,6 +304,7 @@ app.whenReady().then(async () => {
     () => theme.dispose(),
     () => updates.dispose(),
     () => titles.dispose(),
+    () => playerMedia.dispose(),
     () => settings.dispose(),
     () => tray.dispose(),
     () => transfer.dispose(),

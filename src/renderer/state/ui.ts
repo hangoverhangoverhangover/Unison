@@ -17,6 +17,7 @@ export type View =
   | 'feed'
   | 'following'
   | 'lyrics'
+  | 'player'
   | `smart:${'recent' | 'on-repeat' | 'forgotten'}`
   | `playlist:${string}`
   | `artist:${string}`

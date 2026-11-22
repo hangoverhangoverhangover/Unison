@@ -10,8 +10,10 @@ import {
   batchParams,
   classifyError,
   enqueue,
+  parseArtistInfo,
   shouldScrobble,
   toQueued,
+  type LastfmArtist,
   type QueuedScrobble
 } from './core'
 
@@ -65,6 +67,8 @@ export function createLastfm(deps: LastfmDeps): {
   setScrobbleSpotify(on: boolean): void
   nowPlaying(track: Track): Promise<void>
   scrobble(report: ScrobbleReport): Promise<void>
+  /** artist.getInfo (QoL 4 Player page); null without keys or when unknown. Cached 7 days. */
+  artistInfo(name: string): Promise<LastfmArtist | null>
   dispose(): void
 } {
   const now = deps.now ?? Date.now
@@ -204,7 +208,26 @@ export function createLastfm(deps: LastfmDeps): {
     authorizing = false
   }
 
+  const ARTIST_TTL_MS = 7 * 24 * 60 * 60 * 1000
+  const artistInfo = async (name: string): Promise<LastfmArtist | null> => {
+    const clean = name.trim()
+    if (!clean || !account) return null
+    const cacheKey = `lastfm.artist:${clean.toLowerCase()}`
+    const cached = read<{ at: number; info: LastfmArtist | null }>(cacheKey)
+    if (cached && now() - cached.at < ARTIST_TTL_MS) return cached.info
+    let info: LastfmArtist | null = null
+    try {
+      info = parseArtistInfo(await call('artist.getInfo', { artist: clean, autocorrect: '1' }))
+    } catch (err) {
+      // 6 = artist not found: remember the miss; anything else: try again next time.
+      if (!(err instanceof LastfmError && err.code === 6)) return null
+    }
+    deps.settings.set(cacheKey, JSON.stringify({ at: now(), info }))
+    return info
+  }
+
   return {
+    artistInfo,
     status,
 
     setKeys(apiKey, secret) {

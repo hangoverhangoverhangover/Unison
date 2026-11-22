@@ -9,6 +9,7 @@ import {
   batchParams,
   classifyError,
   enqueue,
+  parseArtistInfo,
   shouldScrobble,
   toQueued,
   type QueuedScrobble
@@ -125,5 +126,38 @@ describe('classifyError', () => {
     expect(classifyError(9)).toBe('reauth')
     expect(classifyError(13)).toBe('drop')
     expect(classifyError(6)).toBe('drop')
+  })
+})
+
+describe('artist info (QoL 4)', () => {
+  it('reads artist.getInfo into plain text', () => {
+    const info = parseArtistInfo({
+      artist: {
+        name: 'Hi-C',
+        url: 'https://www.last.fm/music/Hi-C',
+        stats: { listeners: '1234', playcount: '9' },
+        tags: { tag: [{ name: 'underground rap' }, { name: 'plugg' }] },
+        bio: {
+          summary:
+            'Rapper from &quot;somewhere&quot;. <a href="https://www.last.fm/music/Hi-C">Read more on Last.fm</a>'
+        }
+      }
+    })
+    expect(info).toEqual({
+      name: 'Hi-C',
+      url: 'https://www.last.fm/music/Hi-C',
+      bio: 'Rapper from "somewhere".',
+      tags: ['underground rap', 'plugg'],
+      listeners: 1234
+    })
+  })
+
+  it('gives null without an artist, and skips an empty bio', () => {
+    expect(parseArtistInfo({})).toBeNull()
+    expect(
+      parseArtistInfo({
+        artist: { name: 'X', bio: { summary: ' <a href="x">Read more on Last.fm</a>' } }
+      })
+    ).toEqual({ name: 'X', tags: [] })
   })
 })

@@ -1,4 +1,4 @@
-import { ChartColumn, FolderOpen, Library, Plus, Rss } from 'lucide-react'
+import { ChartColumn, FolderOpen, Library, MonitorPlay, Plus, Rss } from 'lucide-react'
 import { SMART_KINDS, SMART_META } from '@renderer/lib/smart'
 import SmartIcon from './SmartIcon'
 import { useLibrary } from '@renderer/state/library'
@@ -159,6 +159,7 @@ export default function Sidebar({
         {scConnected && (
           <TopItem compact={compact} view="feed" icon={<Rss size={20} />} label="Feed" />
         )}
+        <TopItem compact={compact} view="player" icon={<MonitorPlay size={20} />} label="Player" />
         <TopItem compact={compact} view="stats" icon={<ChartColumn size={20} />} label="Stats" />
       </div>
       <div className="glass flex min-h-0 flex-1 flex-col rounded-panel p-1.5">

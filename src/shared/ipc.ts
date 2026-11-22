@@ -8,6 +8,8 @@ import type { LastfmStatus, ScrobbleReport } from './lastfm'
 import type { LyricsResult } from './lyrics'
 import type { UpdateStatus } from './updates'
 import type { TitleOverride } from './scTitle'
+import type { PlayerMedia, PlayerMediaScope } from './player'
+import type { LastfmArtist } from './lastfm'
 import type {
   ListeningStats,
   PlayReport,
@@ -131,6 +133,15 @@ export interface IpcInvokeMap {
   // QoL 3: custom theme
   /** The custom theme's background image (a data URL), or null. */
   'theme:getImage': () => string | null
+
+  // QoL 4: Player page
+  /** Last.fm artist.getInfo (bio, tags, listeners); null without Last.fm keys. */
+  'lastfm:artistInfo': (name: string) => LastfmArtist | null
+  'player:list': () => PlayerMedia[]
+  /** Pick pictures or videos and add them with this scope; returns the new list. */
+  'player:add': (scope: PlayerMediaScope) => PlayerMedia[]
+  'player:remove': (id: string) => PlayerMedia[]
+  'player:setScope': (id: string, scope: PlayerMediaScope) => PlayerMedia[]
   /** Save (or with null, remove) the custom theme's background image. */
   'theme:setImage': (image: string | null) => void
   /** Save a theme file where the user picks; false when cancelled. */
@@ -350,6 +361,8 @@ export interface IpcEventMap {
   'updates:status': UpdateStatus
   /** A track's title fix changed (its id). */
   'titles:changed': string
+  /** Player page media list changed. */
+  'player:changed': PlayerMedia[]
   /** transfer:plan progress. */
   'transfer:progress': { done: number; total: number }
   'prefs:changed': AppPrefs
@@ -430,6 +443,11 @@ const invokeChannels = {
   'lyrics:save': true,
   'lyrics:delete': true,
   'theme:getImage': true,
+  'lastfm:artistInfo': true,
+  'player:list': true,
+  'player:add': true,
+  'player:remove': true,
+  'player:setScope': true,
   'theme:setImage': true,
   'theme:exportFile': true,
   'theme:importFile': true,
@@ -531,6 +549,7 @@ const eventChannels = {
   'lastfm:status': true,
   'updates:status': true,
   'titles:changed': true,
+  'player:changed': true,
   'transfer:progress': true,
   'prefs:changed': true,
   'mini:open': true,

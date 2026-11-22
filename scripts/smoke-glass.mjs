@@ -567,6 +567,54 @@ try {
     await win.getByRole('button', { name: "Don't add" }).click()
   }
 
+  if (want('player')) {
+    // Player page: blurred cover first, then a video set for every song, then a picture
+    // for this artist (which wins), in full screen.
+    const clip = join(userData, 'clip.mp4')
+    run([
+      ...['-f', 'lavfi', '-i', 'testsrc2=s=640x360:r=24', '-t', '3'],
+      ...['-c:v', 'libx264', '-pix_fmt', 'yuv420p', clip]
+    ])
+    await go('Local Files')
+    await win.getByRole('radio', { name: 'Unsorted' }).click()
+    await win.getByText('Glasshouse').first().dblclick()
+    await win.waitForTimeout(800)
+    await win.getByRole('button', { name: 'Player', exact: true }).first().click()
+    await win.waitForTimeout(1200)
+    await shot('artwork-player-cover')
+    const pick = (file) =>
+      app.evaluate(({ dialog }, f) => {
+        dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [f] })
+      }, file)
+    await win.getByRole('button', { name: 'Settings', exact: true }).click()
+    const card = win.locator('section', { hasText: 'Pictures and videos behind' }).first()
+    await card.scrollIntoViewIfNeeded()
+    await pick(clip)
+    await card.getByRole('button', { name: 'Add for every song' }).click()
+    await win.waitForTimeout(800)
+    await shot('artwork-player-settings')
+    await win.getByRole('button', { name: 'Player', exact: true }).first().click()
+    await win.waitForTimeout(1500)
+    console.log(
+      'player video:',
+      await win.locator('main video').evaluate((v) => ({ playing: !v.paused, w: v.videoWidth }))
+    )
+    await shot('artwork-player-video')
+    await win.getByRole('button', { name: 'Settings', exact: true }).click()
+    await pick(join(userData, '03.png'))
+    await card.getByRole('button', { name: 'Add for Neon Harbor' }).click()
+    await win.waitForTimeout(500)
+    await win.getByRole('button', { name: 'Player', exact: true }).first().click()
+    await win.getByRole('button', { name: 'Full screen' }).click()
+    await win.waitForTimeout(1500)
+    console.log(
+      'player picture for artist:',
+      await win.locator('main img').first().getAttribute('src')
+    )
+    await shot('artwork-player-full')
+    await win.keyboard.press('Escape')
+  }
+
   if (want('theme')) {
     // Custom theme: pick it, change colours, glass and font, use a picture, then save
     // the theme to a file and load it back.

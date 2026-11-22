@@ -38,3 +38,12 @@ export function scrobbleAfterMs(durationMs: number): number | null {
 
 /** Where to create a Last.fm API account (key + shared secret). */
 export const LASTFM_API_ACCOUNT_URL = 'https://www.last.fm/api/account/create'
+
+/** Artist details for the Player page (QoL 4). */
+export interface LastfmArtist {
+  name: string
+  url?: string
+  bio?: string
+  tags: string[]
+  listeners?: number
+}
