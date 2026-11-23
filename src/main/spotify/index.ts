@@ -6,6 +6,7 @@ import type { SpotifyStatus } from '@shared/spotify'
 import type { Db } from '../db'
 import { emit, handle } from '../ipc'
 import type { SpotifyProvider } from './provider'
+import { readRedirectUri, writeRedirectUri } from './redirect'
 import { SpotifySession } from './session'
 import { dbSettingsStore } from './tokens'
 
@@ -17,7 +18,9 @@ const CHANNELS: InvokeChannel[] = [
   'spotify:logout',
   'spotify:getAccessToken',
   'spotify:play',
-  'spotify:getFollowings'
+  'spotify:getFollowings',
+  'spotify:getRedirectUri',
+  'spotify:setRedirectUri'
 ]
 
 export const NO_KEY_MESSAGE = 'Add your Spotify Client ID in Settings → Spotify to use Spotify.'
@@ -38,6 +41,10 @@ export function registerSpotify(opts: SpotifyOptions): {
     for (const channel of CHANNELS) ipcMain.removeHandler(channel)
   }
 
+  // Works with or without a Client ID, so it can be set up before the first login.
+  handle('spotify:getRedirectUri', () => readRedirectUri(opts.db))
+  handle('spotify:setRedirectUri', (uri) => writeRedirectUri(opts.db, uri))
+
   if (!clientId) {
     const status: SpotifyStatus = { state: 'disconnected', hasKey: false }
     const noKey = (): never => {
@@ -57,6 +64,7 @@ export function registerSpotify(opts: SpotifyOptions): {
     box: safeStorage,
     settings: dbSettingsStore(opts.db),
     openExternal: (url) => shell.openExternal(url),
+    redirectUri: () => readRedirectUri(opts.db),
     onStatus: (status) => emit(opts.getWebContents(), 'spotify:status', status)
   })
 

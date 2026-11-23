@@ -3,8 +3,6 @@ import { useEffect, useState } from 'react'
 import type { SpotifyClientIdSetting } from '@shared/spotify'
 import { ipcMessage } from '@renderer/state/services'
 
-const REDIRECT_URI = 'http://127.0.0.1/callback'
-
 /**
  * Settings → Spotify: use your own Spotify developer app. Spotify only lets
  * accounts allow-listed on an app (or its owner) log in while it's in Development
@@ -16,6 +14,30 @@ export default function SpotifyClientIdForm(): React.JSX.Element {
   const [open, setOpen] = useState(false)
   const [error, setError] = useState<string>()
   const [copied, setCopied] = useState(false)
+  const [redirect, setRedirect] = useState('')
+  const [redirectValue, setRedirectValue] = useState('')
+  const [redirectError, setRedirectError] = useState<string>()
+  const [redirectSaved, setRedirectSaved] = useState(false)
+
+  useEffect(() => {
+    void window.api.invoke('spotify:getRedirectUri').then((uri) => {
+      setRedirect(uri)
+      setRedirectValue(uri)
+    })
+  }, [])
+
+  const saveRedirect = async (uri: string): Promise<void> => {
+    setRedirectError(undefined)
+    setRedirectSaved(false)
+    try {
+      const saved = await window.api.invoke('spotify:setRedirectUri', uri)
+      setRedirect(saved)
+      setRedirectValue(saved)
+      setRedirectSaved(true)
+    } catch (err) {
+      setRedirectError(ipcMessage(err))
+    }
+  }
 
   useEffect(() => {
     void window.api.invoke('spotify:getClientId').then((s) => {
@@ -84,20 +106,55 @@ export default function SpotifyClientIdForm(): React.JSX.Element {
               <span className="text-text">Web Playback SDK</span>.
             </li>
             <li>
-              Add this Redirect URI exactly:{' '}
+              Add this Redirect URI:{' '}
               <button
                 onClick={() =>
-                  void navigator.clipboard.writeText(REDIRECT_URI).then(() => setCopied(true))
+                  void navigator.clipboard.writeText(redirect).then(() => setCopied(true))
                 }
                 className="inline-flex items-center gap-1 rounded bg-raised px-1.5 py-0.5 font-mono text-xs text-text hover:ring-1 hover:ring-text-muted"
                 title="Copy"
               >
-                {REDIRECT_URI} <Copy size={11} />
+                {redirect || 'http://127.0.0.1:8888/callback'} <Copy size={11} />
               </button>
               {copied && <span className="ml-2 text-xs">Copied</span>}
+              <br />
+              Any port works (8888 and 3000 are common). If your app already has one, type it in the
+              box below instead.
             </li>
             <li>Save, then copy the app&apos;s Client ID and paste it here.</li>
           </ol>
+          <form
+            className="mt-3 flex gap-2"
+            onSubmit={(e) => {
+              e.preventDefault()
+              void saveRedirect(redirectValue)
+            }}
+          >
+            <input
+              value={redirectValue}
+              onChange={(e) => {
+                setRedirectValue(e.target.value)
+                setRedirectSaved(false)
+              }}
+              placeholder="Redirect URI, like http://127.0.0.1:8888/callback"
+              aria-label="Spotify Redirect URI"
+              spellCheck={false}
+              className="min-w-0 flex-1 rounded-lg bg-raised px-3 py-2 font-mono text-sm text-text outline-none ring-1 ring-divider placeholder:font-sans placeholder:text-text-muted focus:ring-2 focus:ring-accent"
+            />
+            <button
+              type="submit"
+              disabled={!redirect || redirectValue.trim() === redirect}
+              className="rounded-md bg-accent px-4 py-2 font-bold text-on-accent hover:bg-accent-hover disabled:opacity-40"
+            >
+              Save
+            </button>
+          </form>
+          <p className="mt-2 text-xs text-text-subdued">
+            {redirectSaved
+              ? 'Saved. The next Spotify login uses it.'
+              : 'It must match the Redirect URI on your Spotify app exactly, port included.'}
+          </p>
+          {redirectError && <p className="mt-1 text-danger">{redirectError}</p>}
           <form
             className="mt-3 flex gap-2"
             onSubmit={(e) => {

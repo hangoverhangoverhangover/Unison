@@ -14,6 +14,8 @@ export interface SessionOptions {
   box: SecretBox
   settings: SettingsStore
   openExternal: (url: string) => Promise<void> | void
+  /** The Redirect URI registered on the Spotify app, read at each login. */
+  redirectUri?: () => string
   onStatus: (status: SpotifyStatus) => void
   fetch?: FetchFn
   sleep?: (ms: number) => Promise<void>
@@ -73,6 +75,7 @@ export class SpotifySession {
         : await runLoopbackLogin({
             clientId: this.opts.clientId,
             openExternal: this.opts.openExternal,
+            redirectUri: this.opts.redirectUri?.(),
             fetch: this.fetchFn,
             signal: abort.signal
           })

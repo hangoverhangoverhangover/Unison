@@ -4,6 +4,7 @@ import { createHash, randomBytes } from 'crypto'
 import { createServer, type IncomingMessage, type ServerResponse } from 'http'
 import type { AddressInfo } from 'net'
 import { SPOTIFY_OPTIONAL_SCOPES, SPOTIFY_REDIRECT_PATH, SPOTIFY_SCOPES } from '@shared/spotify'
+import { parseRedirectUri, type LoopbackRedirect } from './redirect'
 
 export const AUTHORIZE_URL = 'https://accounts.spotify.com/authorize'
 export const TOKEN_URL = 'https://accounts.spotify.com/api/token'
@@ -166,6 +167,11 @@ export interface LoopbackLoginOptions {
   clientId: string
   /** Opens the authorize URL; main passes `shell.openExternal`. */
   openExternal: (url: string) => Promise<void> | void
+  /**
+   * The Redirect URI registered on the Spotify app (`http://127.0.0.1:<port>/<path>`).
+   * The server listens on its port. Without it a free port is picked (tests).
+   */
+  redirectUri?: string
   /** Used only for the token exchange. */
   fetch?: FetchFn
   scopes?: readonly string[]
@@ -174,7 +180,7 @@ export interface LoopbackLoginOptions {
 }
 
 /**
- * Full PKCE login: start a loopback server on 127.0.0.1 with a dynamic port, open the
+ * Full PKCE login: start a loopback server on the Redirect URI's port, open the
  * browser, wait for `/callback`, check `state`, exchange the code. The server is always
  * closed. Rejects with LoginCancelledError on denial, timeout or abort.
  */
@@ -183,6 +189,13 @@ export function runLoopbackLogin(opts: LoopbackLoginOptions): Promise<TokenRespo
   const { verifier, challenge } = createPkcePair()
   const state = base64url(randomBytes(24))
   const timeoutMs = opts.timeoutMs ?? LOGIN_TIMEOUT_MS
+  let fixed: LoopbackRedirect | null = null
+  try {
+    fixed = opts.redirectUri ? parseRedirectUri(opts.redirectUri) : null
+  } catch (err) {
+    return Promise.reject(err instanceof Error ? err : new Error(String(err)))
+  }
+  const callbackPath = fixed?.path ?? SPOTIFY_REDIRECT_PATH
 
   return new Promise<TokenResponse>((resolve, reject) => {
     let settled = false
@@ -218,7 +231,7 @@ export function runLoopbackLogin(opts: LoopbackLoginOptions): Promise<TokenRespo
 
     async function onRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {
       const url = new URL(req.url ?? '/', 'http://127.0.0.1')
-      if (req.method !== 'GET' || url.pathname !== SPOTIFY_REDIRECT_PATH) {
+      if (req.method !== 'GET' || url.pathname !== callbackPath) {
         res.writeHead(404, { Connection: 'close' }).end()
         return
       }
@@ -266,11 +279,19 @@ export function runLoopbackLogin(opts: LoopbackLoginOptions): Promise<TokenRespo
       return
     }
     opts.signal?.addEventListener('abort', onAbort)
-    server.on('error', (err) => finish(err))
-    server.listen(0, '127.0.0.1', () => {
+    server.on('error', (err: NodeJS.ErrnoException) =>
+      finish(
+        err.code === 'EADDRINUSE' && fixed
+          ? new Error(
+              `Port ${fixed.port} is in use by another program. Close it, or use another port in your Spotify app's Redirect URI and in Settings.`
+            )
+          : err
+      )
+    )
+    server.listen(fixed?.port ?? 0, fixed?.host ?? '127.0.0.1', () => {
       const { port } = server.address() as AddressInfo
-      // Registered in the dashboard without a port; Spotify accepts the dynamic loopback port.
-      redirectUri = `http://127.0.0.1:${port}${SPOTIFY_REDIRECT_PATH}`
+      // Spotify matches the registered Redirect URI exactly, port included.
+      redirectUri = fixed?.uri ?? `http://127.0.0.1:${port}${SPOTIFY_REDIRECT_PATH}`
       timer = setTimeout(
         () =>
           finish(new LoginCancelledError('timeout', 'Spotify login timed out after 5 minutes.')),

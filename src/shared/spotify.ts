@@ -1,7 +1,7 @@
 // Spotify-specific contracts (Phase 2). Owned by the main agent.
 // Reference: docs/research/spotify-web-api.md
 
-/** Loopback redirect. Port is chosen at runtime; register `http://127.0.0.1/callback` (no port). */
+/** Callback path when no Redirect URI is set (tests). The app uses the one in Settings. */
 export const SPOTIFY_REDIRECT_PATH = '/callback'
 
 export const SPOTIFY_SCOPES = [

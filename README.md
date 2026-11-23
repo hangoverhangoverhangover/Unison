@@ -167,13 +167,13 @@ Spotify only lets an app play music for accounts its owner has allowed, so you r
 
 1. Go to the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard) and log in with your Spotify account.
 2. **Create app.** Give it any name and description.
-3. Under **Redirect URIs**, add exactly:
+3. Under **Redirect URIs**, add a loopback address with a port, for example:
 
    ```
-   http://127.0.0.1/callback
+   http://127.0.0.1:8888/callback
    ```
 
-   No port number, and `127.0.0.1` rather than `localhost`: the app picks a free port at login time, and Spotify only accepts that when the registered address has no port.
+   Any free port works (`:8888` and `:3000` are common). The app uses `http://127.0.0.1:8888/callback` unless you change it: if yours is different, type it in **Settings → Accounts → Spotify → Use your own Client ID → Redirect URI**. It has to match the one on your Spotify app exactly, port included.
 
 4. Under **Which API/SDKs are you planning to use?**, tick **Web API** and **Web Playback SDK**. Save.
 5. Open the app's **Settings → User Management** and add every Spotify account that will use it (name and the account's email). The app is in Development Mode, which allows **up to 5 people**.
@@ -263,16 +263,16 @@ The full list is also in **Settings → Shortcuts**.
 
 ## Troubleshooting
 
-| Problem                                             | Fix                                                                       |
-| --------------------------------------------------- | ------------------------------------------------------------------------- |
-| Spotify plays a few seconds, then stops             | Run `npm run vmp:sign` again (Electron was reinstalled).                  |
-| Spotify: "account error"                            | That account needs Premium.                                               |
-| Spotify: errors or empty lists after login          | Add the account under **User Management** in your Spotify app (max 5).    |
-| Spotify login page says the redirect URI is invalid | It must be exactly `http://127.0.0.1/callback`, no port, not `localhost`. |
-| SoundCloud sign-in says "You have been blocked"     | Wait a few minutes, or connect with the `oauth_token` (above).            |
-| Protected tracks don't play on first launch         | The first launch downloads Widevine; make sure you're online and restart. |
-| Widevine fails when started from another app        | Start the app from a normal PowerShell or Command Prompt window.          |
-| Downloads or the tag editor don't work              | Put `yt-dlp.exe` and `ffmpeg.exe` in `bin/`.                              |
+| Problem                                             | Fix                                                                                          |
+| --------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Spotify plays a few seconds, then stops             | Run `npm run vmp:sign` again (Electron was reinstalled).                                     |
+| Spotify: "account error"                            | That account needs Premium.                                                                  |
+| Spotify: errors or empty lists after login          | Add the account under **User Management** in your Spotify app (max 5).                       |
+| Spotify login page says the redirect URI is invalid | The Redirect URI in the app's Settings must match your Spotify app's exactly, port included. |
+| SoundCloud sign-in says "You have been blocked"     | Wait a few minutes, or connect with the `oauth_token` (above).                               |
+| Protected tracks don't play on first launch         | The first launch downloads Widevine; make sure you're online and restart.                    |
+| Widevine fails when started from another app        | Start the app from a normal PowerShell or Command Prompt window.                             |
+| Downloads or the tag editor don't work              | Put `yt-dlp.exe` and `ffmpeg.exe` in `bin/`.                                                 |
 
 ---
 

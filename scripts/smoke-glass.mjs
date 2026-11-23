@@ -795,6 +795,25 @@ try {
     console.log('app log ok')
   }
 
+  if (want('spredirect')) {
+    // Spotify setup: the Redirect URI field takes any port, refuses one without a port.
+    await win.getByRole('button', { name: 'Settings', exact: true }).click()
+    const open = win.getByRole('button', { name: 'Use your own Client ID' })
+    if (await open.count()) await open.click()
+    const field = win.getByLabel('Spotify Redirect URI')
+    const start = await field.inputValue()
+    await field.fill('http://127.0.0.1/callback')
+    await field.press('Enter')
+    await win.getByText('Add the port from your Spotify app').waitFor()
+    await field.fill('http://127.0.0.1:3000/callback')
+    await field.press('Enter')
+    await win.getByText('Saved. The next Spotify login uses it.').waitFor()
+    const saved = await win.evaluate(() => window.api.invoke('spotify:getRedirectUri'))
+    await field.scrollIntoViewIfNeeded()
+    await shot('spotify-redirect')
+    console.log('redirect default:', start, 'saved:', saved)
+  }
+
   if (want('genius')) {
     // Settings card only: a real lookup needs the user's own token.
     await win.getByRole('button', { name: 'Settings', exact: true }).click()

@@ -207,6 +207,10 @@ export interface IpcInvokeMap {
   'spotify:getClientId': () => SpotifyClientIdSetting
   /** Save ('' clears) the Client ID from Settings; a different ID signs out of Spotify. */
   'spotify:setClientId': (clientId: string) => SpotifyClientIdSetting
+  /** The Redirect URI the Spotify login uses (must match the one on the Spotify app). */
+  'spotify:getRedirectUri': () => string
+  /** Save ('' resets to http://127.0.0.1:8888/callback); returns the URI now in use. */
+  'spotify:setRedirectUri': (uri: string) => string
   'soundcloud:isFollowing': (userId: string) => boolean
   /** Public action: the renderer confirms first. */
   'soundcloud:setFollowing': (userId: string, follow: boolean) => void
@@ -497,6 +501,8 @@ const invokeChannels = {
   'spotify:getFollowings': true,
   'spotify:getClientId': true,
   'spotify:setClientId': true,
+  'spotify:getRedirectUri': true,
+  'spotify:setRedirectUri': true,
   'app:relaunch': true,
   'app:openLogs': true,
   'soundcloud:isFollowing': true,
