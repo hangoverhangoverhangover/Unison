@@ -122,3 +122,79 @@ describe('lyrics service', () => {
     expect(r).toMatchObject({ source: 'user', synced: null, plain: 'line one\nline two' })
   })
 })
+
+describe('Genius backup (QoL 4)', () => {
+  const page =
+    '<div data-lyrics-container="true">[Verse]<br>Glass in the house<br>Light in the room</div>'
+  function withGenius(
+    token: string | null,
+    geniusHits: unknown[]
+  ): {
+    lyrics: ReturnType<typeof createLyrics>
+    asked: string[]
+  } {
+    const asked: string[] = []
+    const settings: SettingsStore = {
+      get: (k) => store.get(k),
+      set: (k, v) => void store.set(k, v),
+      delete: (k) => void store.delete(k)
+    }
+    const lyrics = createLyrics({
+      settings,
+      userAgent: 'Unison test',
+      now: () => now,
+      geniusToken: () => token,
+      fetch: (async (url: string) => {
+        asked.push(url.split('?')[0]!)
+        if (url.startsWith('https://api.genius.com'))
+          return new Response(JSON.stringify({ response: { hits: geniusHits } }), { status: 200 })
+        if (url.startsWith('https://genius.com')) return new Response(page, { status: 200 })
+        return new Response(JSON.stringify({ name: 'TrackNotFound' }), {
+          status: 404,
+          headers: { 'content-type': 'application/json' }
+        })
+      }) as unknown as typeof fetch
+    })
+    return { lyrics, asked }
+  }
+  const hit = {
+    type: 'song',
+    result: {
+      title: 'Glasshouse',
+      url: 'https://genius.com/Neon-harbor-glasshouse-lyrics',
+      lyrics_state: 'complete',
+      primary_artist: { name: 'Neon Harbor' }
+    }
+  }
+
+  it('asks Genius only when LRCLIB has nothing, and caches the plain lyrics', async () => {
+    const { lyrics, asked } = withGenius('tok', [hit])
+    const r = await lyrics.get(track())
+    expect(r).toEqual({
+      source: 'genius',
+      synced: null,
+      plain: 'Glass in the house\nLight in the room',
+      instrumental: false,
+      url: 'https://genius.com/Neon-harbor-glasshouse-lyrics'
+    })
+    const n = asked.length
+    expect(await lyrics.get(track())).toEqual(r)
+    expect(asked.length).toBe(n)
+  })
+
+  it('never asks Genius without a token or when LRCLIB has lyrics', async () => {
+    const none = withGenius(null, [hit])
+    expect((await none.lyrics.get(track())).source).toBe('none')
+    expect(none.asked.some((u) => u.includes('genius'))).toBe(false)
+    store.clear()
+    replies.push({ status: 200, body: { plainLyrics: 'From LRCLIB', instrumental: false } })
+    expect((await make().get(track())).source).toBe('lrclib')
+  })
+
+  it('a miss cached before the token was added asks Genius once', async () => {
+    await withGenius(null, [hit]).lyrics.get(track())
+    const later = withGenius('tok', [hit])
+    expect((await later.lyrics.get(track())).source).toBe('genius')
+    expect(later.asked.filter((u) => u.includes('lrclib'))).toEqual([])
+  })
+})

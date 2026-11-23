@@ -4,6 +4,7 @@
 import { parseLrc, type LyricsResult } from '@shared/lyrics'
 import type { Track } from '@shared/types'
 import type { SettingsStore } from '../spotify/tokens'
+import { geniusLyrics } from './genius'
 
 const API = 'https://lrclib.net/api'
 const USER_PREFIX = 'lyrics.user:'
@@ -23,6 +24,8 @@ interface LrclibRecord {
 interface Cached {
   at: number
   result: LyricsResult
+  /** Genius was asked too (it answered, even if with nothing). */
+  genius?: boolean
 }
 
 const NONE: LyricsResult = { source: 'none', synced: null, plain: null, instrumental: false }
@@ -33,6 +36,8 @@ export interface LyricsDeps {
   /** LRCLIB asks clients to name themselves. */
   userAgent: string
   now?: () => number
+  /** Your Genius API token (QoL 4); Genius is only asked when LRCLIB has no lyrics. */
+  geniusToken?: () => string | null
 }
 
 function fromRecord(r: LrclibRecord): LyricsResult {
@@ -107,6 +112,31 @@ export function createLyrics(deps: LyricsDeps): {
     }
   }
 
+  /** Genius, when LRCLIB found nothing: the result and whether Genius answered. */
+  const backup = async (
+    track: Track,
+    token: string | null
+  ): Promise<{ result: LyricsResult; asked: boolean }> => {
+    if (!token) return { result: NONE, asked: false }
+    const g = await geniusLyrics(deps.fetch, token, track, deps.userAgent)
+    if (g === null) return { result: NONE, asked: false }
+    if (g === 'none') return { result: NONE, asked: true }
+    return {
+      result: { source: 'genius', synced: null, plain: g.plain, instrumental: false, url: g.url },
+      asked: true
+    }
+  }
+  const remember = (
+    track: Track,
+    b: { result: LyricsResult; asked: boolean },
+    at: number
+  ): LyricsResult => {
+    const cached: Cached = { at: b.result.source === 'none' ? at : now(), result: b.result }
+    if (b.asked) cached.genius = true
+    deps.settings.set(CACHE_PREFIX + track.id, JSON.stringify(cached))
+    return b.result
+  }
+
   return {
     async get(track) {
       const mine = deps.settings.get(USER_PREFIX + track.id)
@@ -118,17 +148,23 @@ export function createLyrics(deps: LyricsDeps): {
         }
       }
       const raw = deps.settings.get(CACHE_PREFIX + track.id)
+      const token = deps.geniusToken?.() ?? null
       if (raw) {
         try {
           const cached = JSON.parse(raw) as Cached
           const fresh = cached.result.source !== 'none' || now() - cached.at < MISS_TTL_MS
-          if (fresh) return cached.result
+          // A cached miss from before a Genius token was added still asks Genius once.
+          if (fresh && !(cached.result.source === 'none' && token && !cached.genius))
+            return cached.result
+          if (fresh) return remember(track, await backup(track, token), cached.at)
         } catch {
           // stale or corrupt: look it up again
         }
       }
       const result = await lookup(track)
       if (!result) return NONE
+      if (result.source === 'none' && token)
+        return remember(track, await backup(track, token), now())
       deps.settings.set(CACHE_PREFIX + track.id, JSON.stringify({ at: now(), result }))
       return result
     },

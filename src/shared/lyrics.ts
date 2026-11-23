@@ -14,8 +14,10 @@ export interface LyricLine {
 }
 
 export interface LyricsResult {
-  /** Where they came from: the user's own, LRCLIB, or nothing found. */
-  source: 'user' | 'lrclib' | 'none'
+  /** Where they came from: the user's own, LRCLIB, Genius (QoL 4 backup), or nothing found. */
+  source: 'user' | 'lrclib' | 'genius' | 'none'
+  /** Genius: the song's page, for a link. */
+  url?: string
   /** Time-synced lines, or null when only plain text is known. */
   synced: LyricLine[] | null
   plain: string | null

@@ -129,6 +129,10 @@ export interface IpcInvokeMap {
   /** Save the user's own lyrics (LRC with time stamps, or plain text); local only. */
   'lyrics:save': (track: Track, text: string) => LyricsResult
   'lyrics:delete': (track: Track) => LyricsResult
+  /** A Genius API token is saved (QoL 4: backup lyrics when LRCLIB has none). */
+  'genius:hasToken': () => boolean
+  /** Save your Genius client access token (null removes it); returns whether one is saved. */
+  'genius:setToken': (token: string | null) => boolean
 
   // QoL 3: custom theme
   /** The custom theme's background image (a data URL), or null. */
@@ -442,6 +446,8 @@ const invokeChannels = {
   'lyrics:get': true,
   'lyrics:save': true,
   'lyrics:delete': true,
+  'genius:hasToken': true,
+  'genius:setToken': true,
   'theme:getImage': true,
   'lastfm:artistInfo': true,
   'player:list': true,

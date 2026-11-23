@@ -615,6 +615,18 @@ try {
     await win.keyboard.press('Escape')
   }
 
+  if (want('genius')) {
+    // Settings card only: a real lookup needs the user's own token.
+    await win.getByRole('button', { name: 'Settings', exact: true }).click()
+    const card = win.locator('section', { hasText: 'Backup lyrics' }).first()
+    await card.scrollIntoViewIfNeeded()
+    await card.getByLabel('Genius client access token').fill('short')
+    await card.getByRole('button', { name: 'Save' }).click()
+    await win.waitForTimeout(400)
+    console.log('genius bad token:', await card.locator('.text-danger').textContent())
+    await card.screenshot({ path: `${out}/artwork-genius-card.png` })
+  }
+
   if (want('theme')) {
     // Custom theme: pick it, change colours, glass and font, use a picture, then save
     // the theme to a file and load it back.

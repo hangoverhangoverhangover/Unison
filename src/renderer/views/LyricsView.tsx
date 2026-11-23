@@ -41,6 +41,7 @@ export default function LyricsView(): React.JSX.Element {
           Lyrics
           {result?.source === 'lrclib' && ' · from LRCLIB'}
           {result?.source === 'user' && ' · yours'}
+          {result?.source === 'genius' && ' · from Genius'}
         </p>
         <h1 className="truncate text-[32px] leading-tight font-black tracking-[-0.02em]">
           {track?.title ?? 'Nothing playing'}
@@ -123,6 +124,16 @@ export default function LyricsView(): React.JSX.Element {
         <>
           <p className="mb-4 flex items-center gap-2 text-sm text-text-muted">
             <Mic size={14} /> These lyrics aren’t synced yet. Sync them to follow along.
+            {result.source === 'genius' && result.url && (
+              <a
+                href={result.url}
+                target="_blank"
+                rel="noreferrer"
+                className="ml-auto font-semibold text-text-subdued hover:text-text hover:underline"
+              >
+                View on Genius
+              </a>
+            )}
           </p>
           <div className="text-[22px] leading-relaxed font-bold whitespace-pre-line text-text-subdued">
             {result.plain}
