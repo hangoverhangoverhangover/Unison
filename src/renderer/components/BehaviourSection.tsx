@@ -4,7 +4,6 @@ import { SHORTCUTS } from '@renderer/lib/shortcuts'
 import { ipcMessage } from '@renderer/state/services'
 import Switch from './Switch'
 import DiscordRow from './DiscordSection'
-import MiniPlayerSection from './MiniPlayerSection'
 import { useAddCheck } from '@renderer/state/addCheck'
 
 function Row({
@@ -82,7 +81,6 @@ export function BehaviourSection(): React.JSX.Element {
           onChange={(v) => void set({ autoDownloadLikes: v })}
         />
       </Row>
-      <MiniPlayerSection prefs={prefs} set={set} />
       <AskDuplicatesRow />
       <Row
         title="Tidy SoundCloud titles"

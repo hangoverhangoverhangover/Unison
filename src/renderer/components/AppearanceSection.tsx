@@ -6,6 +6,7 @@ import { ZOOM, clampZoom } from '@shared/layout'
 import { customBackdrop, isLightColor } from '@shared/theme'
 import { useAppearance } from '@renderer/state/appearance'
 import CustomThemeEditor from './CustomThemeEditor'
+import MiniPlayerSection from './MiniPlayerSection'
 
 const THEMES: { theme: Theme; label: string; note: string; swatch: string }[] = [
   {
@@ -133,6 +134,7 @@ export default function AppearanceSection(): React.JSX.Element {
         </button>
       </div>
       <p className="mt-2 text-xs text-text-muted">Ctrl + and Ctrl − zoom too; Ctrl 0 resets.</p>
+      <MiniPlayerSection />
     </section>
   )
 }
