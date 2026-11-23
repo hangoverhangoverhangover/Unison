@@ -16,6 +16,12 @@ export default function GeniusSection(): React.JSX.Element {
   const [token, setToken] = useState('')
   const [error, setError] = useState<string>()
   const [busy, setBusy] = useState(false)
+  const [check, setCheck] = useState<string>()
+
+  const test = async (): Promise<void> => {
+    setCheck('Checking…')
+    setCheck(await window.api.invoke('genius:test').catch((err) => ipcMessage(err)))
+  }
 
   useEffect(() => {
     void window.api.invoke('genius:hasToken').then(setHas)
@@ -25,8 +31,11 @@ export default function GeniusSection(): React.JSX.Element {
     setBusy(true)
     setError(undefined)
     try {
-      setHas(await window.api.invoke('genius:setToken', value))
+      const saved = await window.api.invoke('genius:setToken', value)
+      setHas(saved)
       setToken('')
+      setCheck(undefined)
+      if (saved) void test()
     } catch (err) {
       setError(ipcMessage(err))
     } finally {
@@ -45,13 +54,23 @@ export default function GeniusSection(): React.JSX.Element {
           </p>
         </div>
         {has && (
-          <button className={ghost} disabled={busy} onClick={() => void save(null)}>
-            Remove token
-          </button>
+          <div className="flex gap-1">
+            <button className={ghost} disabled={busy} onClick={() => void test()}>
+              Test token
+            </button>
+            <button className={ghost} disabled={busy} onClick={() => void save(null)}>
+              Remove token
+            </button>
+          </div>
         )}
       </div>
       {has ? (
-        <p className="mt-3 text-sm text-text-subdued">Token saved. Genius is on.</p>
+        <p
+          role="status"
+          className={`mt-3 text-sm ${check && check !== 'Token works.' && check !== 'Checking…' ? 'text-danger' : 'text-text-subdued'}`}
+        >
+          {check ?? 'Token saved. Genius is on.'}
+        </p>
       ) : (
         <>
           <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-sm text-text-subdued">

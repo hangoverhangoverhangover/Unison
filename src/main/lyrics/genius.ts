@@ -133,11 +133,34 @@ export function lyricsFromPage(html: string): string | null {
  * Look the song up. { plain, url } when found, 'none' when Genius has no match,
  * null when it couldn't answer (offline, bad token, rate limited): don't cache that.
  */
+/** Check a token with one search. A plain message for Settings. */
+export async function testGeniusToken(
+  fetchFn: Fetch,
+  token: string,
+  userAgent: string
+): Promise<string> {
+  try {
+    const res = await fetchFn(
+      `${GENIUS_API}/search?q=${encodeURIComponent('Kendrick Lamar HUMBLE')}`,
+      {
+        headers: { Authorization: `Bearer ${token}`, 'User-Agent': userAgent }
+      }
+    )
+    if (res.status === 401)
+      return 'Genius refused this token. Use the Client Access Token (not the Client ID or Secret).'
+    if (!res.ok) return `Genius answered HTTP ${res.status}. Try again later.`
+    return 'Token works.'
+  } catch {
+    return "Couldn't reach Genius. Check your connection."
+  }
+}
+
 export async function geniusLyrics(
   fetchFn: Fetch,
   token: string,
   track: Track,
-  userAgent: string
+  userAgent: string,
+  log: (message: string) => void = () => {}
 ): Promise<{ plain: string; url: string } | 'none' | null> {
   const artist = track.artists[0]?.trim()
   const title = cleanTitle(track.title).trim()
@@ -147,15 +170,22 @@ export async function geniusLyrics(
       `${GENIUS_API}/search?${new URLSearchParams({ q: `${artist} ${title}` }).toString()}`,
       { headers: { Authorization: `Bearer ${token}`, 'User-Agent': userAgent } }
     )
-    if (!res.ok) return null
+    if (!res.ok) {
+      log(`[genius] search failed: HTTP ${res.status}`)
+      return null
+    }
     const json = (await res.json()) as { response?: { hits?: unknown } }
     const url = pickHit(json.response?.hits, track)
     if (!url) return 'none'
     const page = await fetchFn(url, { headers: { 'User-Agent': userAgent } })
-    if (!page.ok) return null
+    if (!page.ok) {
+      log(`[genius] lyrics page failed: HTTP ${page.status}`)
+      return null
+    }
     const plain = lyricsFromPage(await page.text())
     return plain ? { plain, url } : 'none'
-  } catch {
+  } catch (err) {
+    log(`[genius] lookup failed: ${err instanceof Error ? err.message : String(err)}`)
     return null
   }
 }

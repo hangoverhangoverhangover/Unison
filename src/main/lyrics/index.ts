@@ -5,13 +5,15 @@ import type { Db } from '../db'
 import { handle } from '../ipc'
 import { dbSettingsStore } from '../spotify/tokens'
 import { createLyrics } from './service'
+import { testGeniusToken } from './genius'
 
 const CHANNELS: InvokeChannel[] = [
   'lyrics:get',
   'lyrics:save',
   'lyrics:delete',
   'genius:hasToken',
-  'genius:setToken'
+  'genius:setToken',
+  'genius:test'
 ]
 
 /** Your Genius API token, encrypted with the OS key store (QoL 4). */
@@ -20,6 +22,7 @@ const TOKEN_SHAPE = /^[A-Za-z0-9_-]{20,200}$/
 
 export function registerLyrics(opts: { db: Db }): { dispose(): void } {
   const settings = dbSettingsStore(opts.db)
+  const userAgent = `Unison/${app.getVersion()} (https://github.com/hangoverhangoverhangover/Unison)`
   const geniusToken = (): string | null => {
     const sealed = settings.get(GENIUS_KEY)
     if (!sealed) return null
@@ -34,10 +37,14 @@ export function registerLyrics(opts: { db: Db }): { dispose(): void } {
     geniusToken,
     fetch: (input, init) => fetch(input, init),
     // LRCLIB asks clients to name themselves.
-    userAgent: `Unison/${app.getVersion()} (https://github.com/hangoverhangoverhangover/Unison)`
+    userAgent
   })
   handle('lyrics:get', (track) => lyrics.get(track))
   handle('genius:hasToken', () => geniusToken() !== null)
+  handle('genius:test', async () => {
+    const token = geniusToken()
+    return token ? testGeniusToken((u, i) => fetch(u, i), token, userAgent) : 'No token saved.'
+  })
   handle('genius:setToken', (token) => {
     if (token === null) {
       settings.delete(GENIUS_KEY)

@@ -118,7 +118,7 @@ export function createLyrics(deps: LyricsDeps): {
     token: string | null
   ): Promise<{ result: LyricsResult; asked: boolean }> => {
     if (!token) return { result: NONE, asked: false }
-    const g = await geniusLyrics(deps.fetch, token, track, deps.userAgent)
+    const g = await geniusLyrics(deps.fetch, token, track, deps.userAgent, (m) => console.warn(m))
     if (g === null) return { result: NONE, asked: false }
     if (g === 'none') return { result: NONE, asked: true }
     return {
