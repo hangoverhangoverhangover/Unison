@@ -8,7 +8,7 @@ import { playback } from '@renderer/playback/controller'
 import { readSpectrum, SPECTRUM_BINS } from '@renderer/playback/audioGraph'
 import { usePlayback } from '@renderer/state/player'
 import { useLyrics } from '@renderer/state/lyrics'
-import { usePlayerPage } from '@renderer/state/playerPage'
+import { usePlayerPage, type VizSettings } from '@renderer/state/playerPage'
 import { useUi } from '@renderer/state/ui'
 import { useLyricPosition } from '@renderer/lib/useLyricPosition'
 import { useFullscreen } from '@renderer/lib/useFullscreen'
@@ -193,53 +193,119 @@ function LyricsColumn(): React.JSX.Element | null {
   )
 }
 
-/** Covers of what plays next; click one to jump there. */
+/**
+ * What plays next. Narrow covers until you point at it: then the strip widens (the
+ * page makes room) to show each song's title and artist, and the song under the
+ * pointer grows, pushing the others apart. Click one to jump there.
+ */
 function QueueStrip(): React.JSX.Element | null {
   const queue = usePlayback((s) => s.queue)
   if (queue.length === 0) return null
   return (
-    <div className="flex h-full w-14 flex-col gap-2 overflow-y-auto pt-10 pb-2 [scrollbar-width:none]">
+    <div className="group/strip flex h-full w-16 flex-none flex-col gap-1 overflow-x-hidden overflow-y-auto pt-10 pb-2 transition-[width] duration-200 ease-out [scrollbar-width:none] hover:w-72 focus-within:w-72">
+      <p className="truncate px-1 pb-1 text-xs font-bold tracking-wide text-white/70 uppercase opacity-0 transition-opacity duration-200 group-hover/strip:opacity-100 group-focus-within/strip:opacity-100">
+        Up next · {queue.length}
+      </p>
       {queue.slice(0, 30).map((item, i) => (
         <button
           key={item.uid}
-          title={`${item.track.title} · ${item.track.artists.join(', ')}`}
+          aria-label={`Play ${item.track.title} by ${item.track.artists.join(', ')}`}
           onClick={async () => {
             for (let k = 0; k <= i; k++) await playback.next()
           }}
-          className="flex-none overflow-hidden rounded-md opacity-80 shadow transition-opacity hover:opacity-100"
+          className="group/item flex w-full flex-none items-center gap-3 rounded-lg p-1 text-left transition-colors duration-200 hover:bg-black/45 focus-visible:bg-black/45 focus-visible:outline-none"
         >
-          <Artwork src={item.track.artworkUrl} size={56} />
+          <span className="size-14 flex-none overflow-hidden rounded-md opacity-80 shadow-lg transition-[width,height,opacity] duration-200 ease-out group-hover/item:size-20 group-hover/item:opacity-100 group-focus-visible/item:size-20">
+            <Artwork src={item.track.artworkUrl} size={80} fill className="size-full" />
+          </span>
+          <span className="min-w-0 text-white opacity-0 transition-opacity duration-200 group-hover/strip:opacity-100 group-focus-within/strip:opacity-100">
+            <span className="block truncate text-sm font-semibold">{item.track.title}</span>
+            <span className="block truncate text-xs text-white/70">
+              {item.track.artists.join(', ') || 'Unknown artist'}
+            </span>
+          </span>
         </button>
       ))}
     </div>
   )
 }
 
-/** Level bars from the audio (local files and SoundCloud; Spotify can't be read). */
+/** The bar colour: the theme accent, white, or your own. */
+function vizColor(viz: VizSettings): string {
+  if (viz.color === 'white') return '#ffffff'
+  if (viz.color === 'custom') return viz.customColor
+  const accent = getComputedStyle(document.documentElement).getPropertyValue('--color-accent')
+  return accent.trim() || '#7289da'
+}
+
+/**
+ * Level bars from the audio (local files and SoundCloud; Spotify can't be read).
+ * Style, count, height, sensitivity, colour and opacity come from Settings → Player.
+ */
 function Visualizer(): React.JSX.Element {
   const ref = useRef<HTMLCanvasElement>(null)
+  const viz = usePlayerPage((s) => s.viz)
+  // The draw loop reads the latest settings without restarting.
+  const vizRef = useRef(viz)
+  useEffect(() => {
+    vizRef.current = viz
+  }, [viz])
   useEffect(() => {
     const canvas = ref.current
     if (!canvas) return
     const data = new Uint8Array(SPECTRUM_BINS)
-    const bars = 64
     let raf = 0
     const draw = (): void => {
+      const v = vizRef.current
       const ctx = canvas.getContext('2d')
       const w = (canvas.width = canvas.clientWidth * devicePixelRatio)
       const h = (canvas.height = canvas.clientHeight * devicePixelRatio)
       if (ctx) {
         ctx.clearRect(0, 0, w, h)
         const ok = readSpectrum(data) && playback.getState().status === 'playing'
-        const accent = getComputedStyle(document.documentElement).getPropertyValue('--color-accent')
-        ctx.fillStyle = accent.trim() || '#7289da'
-        const bw = w / bars
-        for (let i = 0; i < bars; i++) {
-          // Low frequencies get more bars (that's where the music is).
-          const v = ok ? data[Math.floor((i / bars) ** 1.6 * (SPECTRUM_BINS * 0.7))]! / 255 : 0
-          const bh = Math.max(2 * devicePixelRatio, v * h)
-          ctx.globalAlpha = 0.55 + v * 0.45
-          ctx.fillRect(i * bw + bw * 0.15, h - bh, bw * 0.7, bh)
+        const n = v.bars
+        // Low frequencies get more bars (that's where the music is).
+        const level = (i: number): number =>
+          ok
+            ? Math.min(
+                1,
+                (data[Math.floor((i / n) ** 1.6 * (SPECTRUM_BINS * 0.7))]! / 255) * v.sensitivity
+              )
+            : 0
+        const color = vizColor(v)
+        ctx.fillStyle = color
+        ctx.strokeStyle = color
+        const min = 2 * devicePixelRatio
+        if (v.style === 'wave') {
+          const pts = Array.from({ length: n }, (_, i) => ({
+            x: (i / (n - 1)) * w,
+            y: h - Math.max(min, level(i) * (h - min))
+          }))
+          ctx.beginPath()
+          ctx.moveTo(0, h)
+          ctx.lineTo(pts[0]!.x, pts[0]!.y)
+          for (let i = 1; i < pts.length; i++) {
+            const a = pts[i - 1]!
+            const b = pts[i]!
+            ctx.quadraticCurveTo(a.x, a.y, (a.x + b.x) / 2, (a.y + b.y) / 2)
+          }
+          ctx.lineTo(w, pts[pts.length - 1]!.y)
+          ctx.lineTo(w, h)
+          ctx.closePath()
+          ctx.globalAlpha = 0.25 * v.opacity
+          ctx.fill()
+          ctx.globalAlpha = v.opacity
+          ctx.lineWidth = 2 * devicePixelRatio
+          ctx.stroke()
+        } else {
+          const bw = w / n
+          for (let i = 0; i < n; i++) {
+            const lv = level(i)
+            const bh = Math.max(min, lv * h)
+            ctx.globalAlpha = (0.55 + lv * 0.45) * v.opacity
+            const y = v.style === 'mirror' ? (h - bh) / 2 : h - bh
+            ctx.fillRect(i * bw + bw * 0.15, y, bw * 0.7, bh)
+          }
         }
       }
       raf = requestAnimationFrame(draw)
@@ -247,7 +313,7 @@ function Visualizer(): React.JSX.Element {
     raf = requestAnimationFrame(draw)
     return () => cancelAnimationFrame(raf)
   }, [])
-  return <canvas ref={ref} aria-hidden className="h-16 w-full" />
+  return <canvas ref={ref} aria-hidden className="w-full" style={{ height: viz.height }} />
 }
 
 /**
@@ -289,7 +355,7 @@ export default function PlayerView(): React.JSX.Element {
                   {parts.artist ? <ArtistPanel track={track} /> : <span />}
                   <div className="flex items-end gap-4">
                     <div className="size-[clamp(140px,22vh,260px)] flex-none overflow-hidden rounded-lg shadow-2xl">
-                      <Artwork src={track.artworkUrl} size={260} className="size-full" />
+                      <Artwork src={track.artworkUrl} size={260} fill className="size-full" />
                     </div>
                     <div className="min-w-0 pb-1 text-white">
                       <p className="truncate text-xl font-black">{track.title}</p>

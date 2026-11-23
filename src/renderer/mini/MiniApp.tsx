@@ -126,7 +126,7 @@ function useMiniLyric(state: MiniState | null): { now: string | null; next: stri
 
 const NO_LINE = { now: null, next: null }
 
-/** The mini player's layout and parts (Settings → General → Mini player). */
+/** The mini player's layout and parts (Settings → Appearance → Mini player). */
 function useMiniPrefs(): { layout: MiniLayout; parts: MiniParts } {
   const [prefs, setPrefs] = useState<{ layout: MiniLayout; parts: MiniParts }>({
     layout: 'player',
@@ -216,7 +216,8 @@ function WindowButtons({ layout }: { layout: MiniLayout }): React.JSX.Element {
 /**
  * The mini player window. Two layouts (QoL 4): the player (artwork, title, controls,
  * progress) or a lyric bar (the current line large, the next one faint). What shows is
- * set in Settings → General → Mini player. Drag it anywhere.
+ * set in Settings → Appearance → Mini player. Drag it anywhere; drag an edge to resize
+ * (text and artwork grow with the window).
  */
 export default function MiniApp(): React.JSX.Element {
   useEffect(() => bindAppearance(), [])
@@ -255,16 +256,21 @@ export default function MiniApp(): React.JSX.Element {
         <div className="relative flex h-full flex-col items-center justify-center px-6 text-center">
           {lyric.now ? (
             <>
-              <p className="w-full truncate text-lg font-extrabold" title={lyric.now}>
+              <p
+                className="w-full truncate text-[clamp(14px,30vh,48px)] leading-tight font-extrabold"
+                title={lyric.now}
+              >
                 {lyric.now}
               </p>
               {lyric.next && (
-                <p className="w-full truncate text-xs text-text-muted">{lyric.next}</p>
+                <p className="w-full truncate text-[clamp(10px,15vh,22px)] text-text-muted">
+                  {lyric.next}
+                </p>
               )}
             </>
           ) : (
             <>
-              <p className="w-full truncate text-md font-bold">
+              <p className="w-full truncate text-[clamp(13px,20vh,32px)] font-bold">
                 {track?.title ?? 'Nothing playing'}
               </p>
               <p className="w-full truncate text-xs text-text-subdued">
@@ -289,13 +295,15 @@ export default function MiniApp(): React.JSX.Element {
       {backdrop}
       <div className="relative flex h-full items-center gap-3 py-3 pr-3 pl-3">
         {parts.art && (
-          <div className="size-[80px] flex-none overflow-hidden rounded-md bg-raised shadow-[0_6px_18px_rgba(0,0,0,0.4)]">
+          <div className="aspect-square h-full flex-none overflow-hidden rounded-md bg-raised shadow-[0_6px_18px_rgba(0,0,0,0.4)]">
             {art && <img src={art} alt="" className="size-full object-cover" />}
           </div>
         )}
         <div className="flex min-w-0 flex-1 flex-col justify-between self-stretch pb-2">
           <div className="min-w-0 pr-20">
-            <p className="truncate text-md font-bold">{track?.title ?? 'Nothing playing'}</p>
+            <p className="truncate text-[clamp(14px,14vh,26px)] font-bold">
+              {track?.title ?? 'Nothing playing'}
+            </p>
             {parts.lyric && lyric.now ? (
               // The current lyric line takes the artist's place while it plays.
               <p

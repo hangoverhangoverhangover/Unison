@@ -11,17 +11,10 @@ import { watchWindow } from './diagLog'
 import type { MiniLayout, Theme } from '@shared/config'
 import type { CustomTheme } from '@shared/theme'
 
-export const MINI_WIDTH = 380
-export const MINI_HEIGHT = 112
-/** The lyric-bar layout (QoL 4): wider and shorter. */
-export const MINI_LYRICS_WIDTH = 480
-export const MINI_LYRICS_HEIGHT = 76
+export { fitSize, MINI_LIMITS, miniSize } from './miniSize'
+import { fitSize, MINI_HEIGHT, MINI_LIMITS, MINI_WIDTH } from './miniSize'
+const sizeKey = (layout: MiniLayout): string => `mini.size.${layout}`
 
-export function miniSize(layout: MiniLayout | undefined): { width: number; height: number } {
-  return layout === 'lyrics'
-    ? { width: MINI_LYRICS_WIDTH, height: MINI_LYRICS_HEIGHT }
-    : { width: MINI_WIDTH, height: MINI_HEIGHT }
-}
 /** Gap from the screen edge for the first position. */
 const MARGIN = 24
 const BOUNDS_KEY = 'mini.position'
@@ -68,11 +61,28 @@ function readPosition(db: Db): { x: number; y: number } | undefined {
   }
 }
 
-function writePosition(db: Db, pos: { x: number; y: number }): void {
+function writeSetting(db: Db, key: string, value: unknown): void {
   db.prepare(
     `INSERT INTO settings (key, value) VALUES (?, ?)
      ON CONFLICT (key) DO UPDATE SET value = excluded.value`
-  ).run(BOUNDS_KEY, JSON.stringify(pos))
+  ).run(key, JSON.stringify(value))
+}
+
+function writePosition(db: Db, pos: { x: number; y: number }): void {
+  writeSetting(db, BOUNDS_KEY, pos)
+}
+
+/** The size you last dragged this layout to, or its default. */
+function readSize(db: Db, layout: MiniLayout | undefined): { width: number; height: number } {
+  const raw = db
+    .prepare('SELECT value FROM settings WHERE key = ?')
+    .pluck()
+    .get(sizeKey(layout === 'lyrics' ? 'lyrics' : 'player')) as string | undefined
+  try {
+    return fitSize(layout, raw ? JSON.parse(raw) : null)
+  } catch {
+    return fitSize(layout, null)
+  }
 }
 
 export function registerMini(opts: MiniOptions): {
@@ -88,6 +98,14 @@ export function registerMini(opts: MiniOptions): {
   let win: BrowserWindow | null = null
   let state: MiniState | null = null
   let saveTimer: ReturnType<typeof setTimeout> | undefined
+  let sizeTimer: ReturnType<typeof setTimeout> | undefined
+  const layout = (): MiniLayout => (opts.getLayout?.() === 'lyrics' ? 'lyrics' : 'player')
+  /** Drag limits for the current layout. */
+  const applyLimits = (w: BrowserWindow): void => {
+    const { min, max } = MINI_LIMITS[layout()]
+    w.setMinimumSize(min.width, min.height)
+    w.setMaximumSize(max.width, max.height)
+  }
 
   const mainContents = (): Electron.WebContents | undefined => {
     const m = opts.getMainWindow()
@@ -96,7 +114,7 @@ export function registerMini(opts: MiniOptions): {
 
   function open(): void {
     const area = screen.getPrimaryDisplay().workArea
-    const size = miniSize(opts.getLayout?.())
+    const size = readSize(opts.db, layout())
     const pos = readPosition(opts.db) ?? {
       x: area.x + area.width - size.width - MARGIN,
       y: area.y + area.height - size.height - MARGIN
@@ -105,7 +123,8 @@ export function registerMini(opts: MiniOptions): {
       ...pos,
       ...size,
       frame: false,
-      resizable: false,
+      // Drag an edge or corner to resize; the size is kept per layout.
+      resizable: true,
       maximizable: false,
       minimizable: false,
       fullscreenable: false,
@@ -130,6 +149,15 @@ export function registerMini(opts: MiniOptions): {
       win.setAlwaysOnTop(true, 'floating')
     })
     watchWindow(win, 'mini')
+    applyLimits(win)
+    win.on('resized', () => {
+      if (sizeTimer) clearTimeout(sizeTimer)
+      sizeTimer = setTimeout(() => {
+        if (!win || win.isDestroyed()) return
+        const [width, height] = win.getSize()
+        writeSetting(opts.db, sizeKey(layout()), { width, height })
+      }, 400)
+    })
     win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
     // The Start menu, the taskbar or Win+D can push it behind other windows or minimize
     // it, and with no taskbar button it then looks gone. Put it back on top whenever
@@ -211,7 +239,8 @@ export function registerMini(opts: MiniOptions): {
     toggle,
     relayout() {
       if (!win || win.isDestroyed()) return
-      const size = miniSize(opts.getLayout?.())
+      const size = readSize(opts.db, layout())
+      applyLimits(win)
       const b = win.getBounds()
       if (b.width === size.width && b.height === size.height) return
       // Keep the bottom-right corner where it was (it usually sits in a screen corner).
@@ -220,6 +249,7 @@ export function registerMini(opts: MiniOptions): {
     webContents: () => (win && !win.isDestroyed() ? win.webContents : undefined),
     dispose() {
       if (saveTimer) clearTimeout(saveTimer)
+      if (sizeTimer) clearTimeout(sizeTimer)
       close()
       for (const c of CHANNELS) ipcMain.removeHandler(c)
     }

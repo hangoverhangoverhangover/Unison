@@ -615,6 +615,69 @@ try {
     await win.keyboard.press('Escape')
   }
 
+  if (want('playerpage2')) {
+    // Up next strip pops out on hover; level bar settings; cover fills its box.
+    await go('Local Files')
+    await win.getByRole('radio', { name: 'Unsorted' }).click()
+    await win.getByText('Glasshouse').first().dblclick()
+    await win.waitForTimeout(800)
+    await win.getByRole('button', { name: 'Player', exact: true }).first().click()
+    await win.waitForTimeout(1200)
+    await shot('artwork-player-strip')
+    const items = win.locator('main button[aria-label^="Play "]')
+    await items.nth(1).hover()
+    await win.waitForTimeout(500)
+    console.log(
+      'strip hovered:',
+      await items.nth(1).evaluate((b) => Math.round(b.parentElement.getBoundingClientRect().width))
+    )
+    await shot('artwork-player-strip-hover')
+    const cover = await win.locator('main img').evaluateAll((imgs) =>
+      imgs
+        .map((i) => i.getBoundingClientRect())
+        .filter((r) => r.width > 120)
+        .map((r) => `${Math.round(r.width)}x${Math.round(r.height)}`)
+    )
+    console.log('big covers:', cover)
+    await win.getByRole('button', { name: 'Settings', exact: true }).click()
+    const card = win.locator('section', { hasText: 'Pictures and videos behind' }).first()
+    await card.getByRole('radio', { name: 'Mirrored' }).click()
+    await card.getByRole('radio', { name: 'Your colour' }).click()
+    await card.scrollIntoViewIfNeeded()
+    await card.screenshot({ path: `${out}/artwork-viz-settings.png` })
+    await win.getByRole('button', { name: 'Player', exact: true }).first().click()
+    await win.waitForTimeout(1500)
+    await shot('artwork-player-mirror')
+
+    // Mini player: resizable, keeps the size per layout.
+    await win.evaluate(() => window.api.invoke('mini:toggle'))
+    await win.waitForTimeout(2000)
+    const info = await app.evaluate(({ BrowserWindow }) => {
+      const m = BrowserWindow.getAllWindows().find((w) => w.isAlwaysOnTop())
+      if (!m) return null
+      m.setSize(620, 200)
+      m.emit('resized')
+      return { resizable: m.isResizable(), min: m.getMinimumSize(), max: m.getMaximumSize() }
+    })
+    console.log('mini resize:', info)
+    await win.waitForTimeout(1200)
+    const mini = app.windows().find((w) => w !== win)
+    if (mini) await mini.screenshot({ path: `${out}/artwork-mini-big.png` })
+    await win.evaluate(() => window.api.invoke('mini:toggle'))
+    await win.waitForTimeout(500)
+    await win.evaluate(() => window.api.invoke('mini:toggle'))
+    await win.waitForTimeout(1500)
+    console.log(
+      'mini size after reopen:',
+      await app.evaluate(({ BrowserWindow }) =>
+        BrowserWindow.getAllWindows()
+          .find((w) => w.isAlwaysOnTop())
+          ?.getSize()
+      )
+    )
+    await win.evaluate(() => window.api.invoke('mini:toggle'))
+  }
+
   if (want('applog')) {
     // The app log: startup line, a renderer error, a fake secret that must not be written.
     await win.evaluate(() => console.error('smoke renderer error token=abc123'))

@@ -26,7 +26,7 @@ const pill = (on: boolean): string =>
 const ghost =
   'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold text-text-subdued transition-colors duration-[140ms] hover:bg-raised hover:text-text disabled:opacity-40'
 
-function ColorField({
+export function ColorField({
   label,
   value,
   onChange
@@ -57,7 +57,7 @@ function ColorField({
   )
 }
 
-function RangeField({
+export function RangeField({
   label,
   value,
   min,

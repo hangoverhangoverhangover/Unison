@@ -1,7 +1,15 @@
 import { Film, ImagePlus, Trash2 } from 'lucide-react'
 import { playerMediaUrl, type PlayerMedia, type PlayerMediaScope } from '@shared/player'
 import { usePlayback } from '@renderer/state/player'
-import { usePlayerPage, type PlayerParts } from '@renderer/state/playerPage'
+import {
+  usePlayerPage,
+  VIZ_LIMITS,
+  type PlayerParts,
+  type VizColor,
+  type VizStyle
+} from '@renderer/state/playerPage'
+import ActivePill from './ActivePill'
+import { ColorField, RangeField } from './CustomThemeEditor'
 import Switch from './Switch'
 
 const ghost =
@@ -81,6 +89,131 @@ function MediaRow({ m }: { m: PlayerMedia }): React.JSX.Element {
   )
 }
 
+const pill = (on: boolean): string =>
+  `relative isolate rounded-full px-3 py-1 text-sm font-semibold transition-colors duration-[140ms] ${
+    on ? 'text-base' : 'bg-raised text-text-subdued hover:bg-raised-hover hover:text-text'
+  }`
+
+function Choice<T extends string>({
+  label,
+  id,
+  value,
+  options,
+  onChange
+}: {
+  label: string
+  id: string
+  value: T
+  options: { id: T; label: string }[]
+  onChange: (v: T) => void
+}): React.JSX.Element {
+  return (
+    <div>
+      <p className="text-sm font-semibold text-text-subdued">{label}</p>
+      <div role="radiogroup" aria-label={label} className="mt-1.5 flex flex-wrap gap-1.5">
+        {options.map((o) => (
+          <button
+            key={o.id}
+            role="radio"
+            aria-checked={value === o.id}
+            onClick={() => onChange(o.id)}
+            className={pill(value === o.id)}
+          >
+            {value === o.id && <ActivePill layoutId={id} />}
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+const STYLES: { id: VizStyle; label: string }[] = [
+  { id: 'bars', label: 'Bars' },
+  { id: 'mirror', label: 'Mirrored' },
+  { id: 'wave', label: 'Wave' }
+]
+const COLORS: { id: VizColor; label: string }[] = [
+  { id: 'accent', label: 'Theme accent' },
+  { id: 'white', label: 'White' },
+  { id: 'custom', label: 'Your colour' }
+]
+
+/** Level bar look: style, count, height, sensitivity, colour, opacity. */
+function VisualizerSettings(): React.JSX.Element {
+  const viz = usePlayerPage((s) => s.viz)
+  const setViz = usePlayerPage((s) => s.setViz)
+  return (
+    <div className="mt-5 flex flex-col gap-4">
+      <p className="text-sm font-semibold text-text-subdued">Level bars</p>
+      <Choice
+        label="Style"
+        id="viz-style"
+        value={viz.style}
+        options={STYLES}
+        onChange={(style) => setViz({ style })}
+      />
+      <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+        <RangeField
+          label={viz.style === 'wave' ? 'Points' : 'Bars'}
+          value={viz.bars}
+          min={VIZ_LIMITS.bars[0]}
+          max={VIZ_LIMITS.bars[1]}
+          step={4}
+          format={(v) => String(v)}
+          onChange={(bars) => setViz({ bars })}
+        />
+        <RangeField
+          label="Height"
+          value={viz.height}
+          min={VIZ_LIMITS.height[0]}
+          max={VIZ_LIMITS.height[1]}
+          step={4}
+          format={(v) => `${v} px`}
+          onChange={(height) => setViz({ height })}
+        />
+        <RangeField
+          label="Sensitivity"
+          value={viz.sensitivity}
+          min={VIZ_LIMITS.sensitivity[0]}
+          max={VIZ_LIMITS.sensitivity[1]}
+          step={0.1}
+          format={(v) => `${v.toFixed(1)}×`}
+          onChange={(sensitivity) => setViz({ sensitivity })}
+        />
+        <RangeField
+          label="Opacity"
+          value={viz.opacity}
+          min={VIZ_LIMITS.opacity[0]}
+          max={VIZ_LIMITS.opacity[1]}
+          step={0.05}
+          format={(v) => `${Math.round(v * 100)}%`}
+          onChange={(opacity) => setViz({ opacity })}
+        />
+      </div>
+      <Choice
+        label="Colour"
+        id="viz-color"
+        value={viz.color}
+        options={COLORS}
+        onChange={(color) => setViz({ color })}
+      />
+      {viz.color === 'custom' && (
+        <div className="flex">
+          <ColorField
+            label="Bar colour"
+            value={viz.customColor}
+            onChange={(customColor) => setViz({ customColor })}
+          />
+        </div>
+      )}
+      <p className="text-xs text-text-muted">
+        Spotify songs show no bars: Spotify doesn&apos;t let apps read its audio.
+      </p>
+    </div>
+  )
+}
+
 const PARTS: { key: keyof PlayerParts; label: string }[] = [
   { key: 'artist', label: 'Artist info' },
   { key: 'lyrics', label: 'Lyrics' },
@@ -149,6 +282,7 @@ export default function PlayerMediaSection(): React.JSX.Element {
           </label>
         ))}
       </div>
+      {parts.visualizer && <VisualizerSettings />}
     </section>
   )
 }

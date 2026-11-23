@@ -5,10 +5,14 @@ import { useState } from 'react'
 export default function Artwork({
   src,
   size,
+  fill = false,
   className = ''
 }: {
   src?: string
+  /** Pixel size; also the placeholder icon's scale. */
   size: number
+  /** Fill the parent box instead of being `size` px (the parent sets the size). */
+  fill?: boolean
   className?: string
 }): React.JSX.Element {
   const [failed, setFailed] = useState<string | undefined>()
@@ -16,7 +20,7 @@ export default function Artwork({
   return (
     <div
       className={`relative flex-none overflow-hidden rounded-sm bg-raised ${className}`}
-      style={{ width: size, height: size }}
+      style={fill ? undefined : { width: size, height: size }}
     >
       {show ? (
         <img
