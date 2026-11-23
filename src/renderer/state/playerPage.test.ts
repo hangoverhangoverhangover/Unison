@@ -27,7 +27,8 @@ describe('cleanViz', () => {
       sensitivity: 1.7,
       color: 'custom',
       customColor: '#FF8800',
-      opacity: 0.2
+      opacity: 0.2,
+      systemSound: false
     })
   })
 })

@@ -207,9 +207,21 @@ function VisualizerSettings(): React.JSX.Element {
           />
         </div>
       )}
-      <p className="text-xs text-text-muted">
-        Spotify songs show no bars: Spotify doesn&apos;t let apps read its audio.
-      </p>
+      <label className="flex items-start justify-between gap-4 rounded-lg bg-raised px-3 py-2 text-sm">
+        <span>
+          <span className="block font-semibold">Bars for Spotify songs</span>
+          <span className="block text-xs text-text-muted">
+            Spotify&apos;s audio can&apos;t be read, so the bars listen to your PC&apos;s sound
+            instead, only while the Player page shows a Spotify song. Other sounds (Discord, videos)
+            move them too.
+          </span>
+        </span>
+        <Switch
+          label="Bars for Spotify songs"
+          checked={viz.systemSound}
+          onChange={(systemSound) => setViz({ systemSound })}
+        />
+      </label>
     </div>
   )
 }

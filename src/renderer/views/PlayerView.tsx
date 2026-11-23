@@ -13,6 +13,7 @@ import { useUi } from '@renderer/state/ui'
 import { useLyricPosition } from '@renderer/lib/useLyricPosition'
 import { useFullscreen } from '@renderer/lib/useFullscreen'
 import { artColor } from '@renderer/lib/artColor'
+import { readSystemSpectrum, startSystemSound, stopSystemSound } from '@renderer/lib/systemSound'
 import { useAppearance } from '@renderer/state/appearance'
 import { blur } from '@renderer/styles/tokens'
 import Artwork from '@renderer/components/Artwork'
@@ -259,6 +260,16 @@ function Visualizer(): React.JSX.Element {
   // Artwork theme: the bars take the cover's colour.
   const artTheme = useAppearance((s) => s.theme === 'artwork')
   const cover = usePlayback((s) => s.current?.track.artworkUrl)
+  // Spotify songs: the PC's own sound, when that's turned on (Spotify's can't be read).
+  const spotify = usePlayback((s) => s.current?.track.provider === 'spotify')
+  const useSystem = spotify && viz.systemSound
+  const systemRef = useRef(false)
+  useEffect(() => {
+    systemRef.current = useSystem
+    if (!useSystem) return
+    void startSystemSound()
+    return () => stopSystemSound()
+  }, [useSystem])
   const artRef = useRef<string | null>(null)
   useEffect(() => {
     artRef.current = null
@@ -283,7 +294,9 @@ function Visualizer(): React.JSX.Element {
       const h = (canvas.height = canvas.clientHeight * devicePixelRatio)
       if (ctx) {
         ctx.clearRect(0, 0, w, h)
-        const ok = readSpectrum(data) && playback.getState().status === 'playing'
+        const ok =
+          (systemRef.current ? readSystemSpectrum(data) : readSpectrum(data)) &&
+          playback.getState().status === 'playing'
         const n = v.bars
         // Low frequencies get more bars (that's where the music is).
         const level = (i: number): number =>

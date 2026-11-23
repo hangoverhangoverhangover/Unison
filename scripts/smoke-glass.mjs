@@ -717,6 +717,25 @@ try {
     )
   }
 
+  if (want('systemsound')) {
+    // The main window may capture the PC's sound (loopback) for Spotify level bars.
+    // Nothing is recorded: the tracks are checked and stopped.
+    const got = await win.evaluate(async () => {
+      try {
+        const s = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true })
+        const out = {
+          audio: s.getAudioTracks().map((t) => `${t.kind}:${t.readyState}`),
+          video: s.getVideoTracks().length
+        }
+        s.getTracks().forEach((t) => t.stop())
+        return out
+      } catch (e) {
+        return { error: String(e) }
+      }
+    })
+    console.log('system sound capture:', got)
+  }
+
   if (want('applog')) {
     // The app log: startup line, a renderer error, a fake secret that must not be written.
     await win.evaluate(() => console.error('smoke renderer error token=abc123'))

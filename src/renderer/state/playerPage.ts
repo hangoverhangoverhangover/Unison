@@ -27,6 +27,11 @@ export interface VizSettings {
   customColor: string
   /** 0.2 to 1. */
   opacity: number
+  /**
+   * Spotify songs: listen to the PC's own sound (Windows loopback), since Spotify's audio
+   * can't be read. Picks up every sound the PC plays. Off by default.
+   */
+  systemSound: boolean
 }
 
 export const DEFAULT_VIZ: VizSettings = {
@@ -36,7 +41,8 @@ export const DEFAULT_VIZ: VizSettings = {
   sensitivity: 1,
   color: 'accent',
   customColor: '#ffffff',
-  opacity: 1
+  opacity: 1,
+  systemSound: false
 }
 export const VIZ_LIMITS = {
   bars: [16, 128],
@@ -61,7 +67,8 @@ export function cleanViz(raw: unknown): VizSettings {
       typeof r.customColor === 'string' && /^#[0-9a-f]{6}$/i.test(r.customColor)
         ? r.customColor
         : DEFAULT_VIZ.customColor,
-    opacity: clamp(r.opacity, VIZ_LIMITS.opacity, DEFAULT_VIZ.opacity)
+    opacity: clamp(r.opacity, VIZ_LIMITS.opacity, DEFAULT_VIZ.opacity),
+    systemSound: r.systemSound === true
   }
 }
 

@@ -39,6 +39,7 @@ import { registerTransfer } from './transfer'
 import { registerTags } from './tags'
 import { registerJam } from './jam'
 import { logDir, startLog, watchWindow } from './diagLog'
+import { allowSystemSound } from './systemSound'
 
 // Must be set before the app is ready. Lets playback start without a click,
 // e.g. resuming the queue or media-key play on launch.
@@ -280,6 +281,8 @@ app.whenReady().then(async () => {
       : join(app.getAppPath(), 'bin'),
     getWebContents
   })
+  // Level bars for Spotify songs may listen to the PC's sound (opt-in, Settings → Player).
+  disposers.push(allowSystemSound(getWebContents))
   const jam = registerJam({
     getWebContents,
     // Settings → Jam wins; empty means the built-in relay.
