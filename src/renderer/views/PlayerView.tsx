@@ -1,7 +1,8 @@
 import * as ContextMenu from '@radix-ui/react-context-menu'
 import { ExternalLink, ImagePlus, Maximize, Minimize } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { LastfmArtist } from '@shared/lastfm'
+import { gifDurationMs } from '@shared/gif'
 import { mediaFor, pickFor, playerMediaUrl, scopesFor, type PlayerMedia } from '@shared/player'
 import type { Artist, Track } from '@shared/types'
 import { playback } from '@renderer/playback/controller'
@@ -18,36 +19,109 @@ import { useAppearance } from '@renderer/state/appearance'
 import { blur } from '@renderer/styles/tokens'
 import Artwork from '@renderer/components/Artwork'
 
-/** Your picture or video for this song, or the blurred cover. */
+const gifLengths = new Map<string, Promise<number | null>>()
+/** One play of a GIF background, in ms (null: unreadable). Cached per file. */
+function gifLength(m: PlayerMedia): Promise<number | null> {
+  let p = gifLengths.get(m.id)
+  if (!p) {
+    p = fetch(playerMediaUrl(m))
+      .then((r) => r.arrayBuffer())
+      .then((buf) => gifDurationMs(new Uint8Array(buf)))
+      .catch(() => null)
+    gifLengths.set(m.id, p)
+  }
+  return p
+}
+
+/**
+ * Your picture or video for this song, or the blurred cover. With "Swap backgrounds"
+ * on and more than one that fits, it moves on: pictures after a set time, videos and
+ * GIFs after playing a set number of times. Otherwise one stays (videos loop).
+ */
 function Background({ track }: { track: Track | null }): React.JSX.Element {
   const media = usePlayerPage((s) => s.media)
-  const pick: PlayerMedia | null = pickFor(mediaFor(media, track), track?.id ?? 'none')
+  const swap = usePlayerPage((s) => s.swap)
+  const matches = useMemo(() => mediaFor(media, track), [media, track])
+  const trackId = track?.id ?? 'none'
+  const start = useMemo(() => {
+    const first = pickFor(matches, trackId)
+    return first ? matches.indexOf(first) : 0
+  }, [matches, trackId])
+  // A new song or a changed list starts again from that song's own first pick.
+  const setKey = `${trackId}|${matches.map((m) => m.id).join(',')}`
+  const [step, setStep] = useState({ key: setKey, n: 0 })
+  const n = step.key === setKey ? step.n : 0
+  const swapping = swap.on && matches.length > 1
+  const pick: PlayerMedia | null = matches.length
+    ? matches[(start + (swapping ? n : 0)) % matches.length]!
+    : null
+  const next = useCallback(
+    () => setStep((s) => ({ key: setKey, n: (s.key === setKey ? s.n : 0) + 1 })),
+    [setKey]
+  )
   const videoRef = useRef<HTMLVideoElement>(null)
+  const plays = useRef(0)
+
+  // Pictures stay imageSeconds; a GIF stays for its own length times `plays`.
+  useEffect(() => {
+    if (!swapping || !pick || pick.kind !== 'image') return
+    let live = true
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const gif = pick.ext.toLowerCase() === 'gif'
+    void (gif ? gifLength(pick) : Promise.resolve(null)).then((ms) => {
+      if (!live) return
+      const wait = ms ? Math.max(1000, ms * swap.plays) : swap.imageSeconds * 1000
+      timer = setTimeout(next, wait)
+    })
+    return () => {
+      live = false
+      if (timer) clearTimeout(timer)
+    }
+  }, [swapping, pick, n, swap.imageSeconds, swap.plays, next])
 
   // Videos pause while the window is hidden (no point decoding them).
   useEffect(() => {
+    plays.current = 0
     const v = videoRef.current
     if (!v) return
     const onVis = (): void => void (document.hidden ? v.pause() : v.play().catch(() => {}))
     document.addEventListener('visibilitychange', onVis)
     return () => document.removeEventListener('visibilitychange', onVis)
-  }, [pick?.id])
+  }, [pick?.id, n])
 
+  const onVideoEnded = (): void => {
+    plays.current++
+    const v = videoRef.current
+    if (plays.current < swap.plays && v) {
+      v.currentTime = 0
+      void v.play().catch(() => {})
+    } else next()
+  }
+
+  // Each background fades in; the key remounts it so a GIF starts from its first frame.
+  const shown = `${pick?.id}:${n}`
+  const fade = 'animate-[bg-fade-in_700ms_ease-out] motion-reduce:animate-none'
   return (
     <div aria-hidden className="absolute inset-0 -z-10 overflow-hidden bg-base">
       {pick?.kind === 'video' ? (
         <video
           ref={videoRef}
-          key={pick.id}
+          key={shown}
           src={playerMediaUrl(pick)}
           autoPlay
-          loop
+          loop={!swapping}
+          onEnded={swapping ? onVideoEnded : undefined}
           muted
           playsInline
-          className="size-full object-cover motion-reduce:hidden"
+          className={`size-full object-cover motion-reduce:hidden ${fade}`}
         />
       ) : pick ? (
-        <img key={pick.id} src={playerMediaUrl(pick)} alt="" className="size-full object-cover" />
+        <img
+          key={shown}
+          src={playerMediaUrl(pick)}
+          alt=""
+          className={`size-full object-cover ${fade}`}
+        />
       ) : (
         track?.artworkUrl && (
           <img

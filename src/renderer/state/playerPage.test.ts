@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cleanViz, DEFAULT_VIZ } from './playerPage'
+import { cleanSwap, cleanViz, DEFAULT_SWAP, DEFAULT_VIZ } from './playerPage'
 
 describe('cleanViz', () => {
   it('fills in defaults and drops junk', () => {
@@ -29,6 +29,17 @@ describe('cleanViz', () => {
       customColor: '#FF8800',
       opacity: 0.2,
       systemSound: false
+    })
+  })
+})
+
+describe('cleanSwap', () => {
+  it('defaults to off and keeps numbers in range', () => {
+    expect(cleanSwap(undefined)).toEqual(DEFAULT_SWAP)
+    expect(cleanSwap({ on: true, imageSeconds: 1, plays: 99 })).toEqual({
+      on: true,
+      imageSeconds: 3,
+      plays: 10
     })
   })
 })

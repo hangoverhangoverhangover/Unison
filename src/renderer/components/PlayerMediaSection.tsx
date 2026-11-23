@@ -3,6 +3,7 @@ import { playerMediaUrl, type PlayerMedia, type PlayerMediaScope } from '@shared
 import { usePlayback } from '@renderer/state/player'
 import {
   usePlayerPage,
+  SWAP_LIMITS,
   VIZ_LIMITS,
   type PlayerParts,
   type VizColor,
@@ -226,6 +227,50 @@ function VisualizerSettings(): React.JSX.Element {
   )
 }
 
+/** Swap between backgrounds: how long pictures stay, how often videos and GIFs play. */
+function SwapSettings(): React.JSX.Element {
+  const swap = usePlayerPage((s) => s.swap)
+  const setSwap = usePlayerPage((s) => s.setSwap)
+  return (
+    <div className="mt-4 flex flex-col gap-4">
+      <label className="flex items-start justify-between gap-4 rounded-lg bg-raised px-3 py-2 text-sm">
+        <span>
+          <span className="block font-semibold">Swap backgrounds</span>
+          <span className="block text-xs text-text-muted">
+            When more than one fits the song (say, three for every song), move from one to the next.
+            Off: one stays for the whole song and videos loop.
+          </span>
+        </span>
+        <Switch label="Swap backgrounds" checked={swap.on} onChange={(on) => setSwap({ on })} />
+      </label>
+      {swap.on && (
+        <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+          <RangeField
+            label="Pictures stay"
+            value={swap.imageSeconds}
+            min={SWAP_LIMITS.imageSeconds[0]}
+            max={SWAP_LIMITS.imageSeconds[1]}
+            step={1}
+            format={(v) =>
+              v >= 60 ? `${Math.floor(v / 60)} min ${v % 60 ? `${v % 60} s` : ''}`.trim() : `${v} s`
+            }
+            onChange={(imageSeconds) => setSwap({ imageSeconds })}
+          />
+          <RangeField
+            label="Videos and GIFs play"
+            value={swap.plays}
+            min={SWAP_LIMITS.plays[0]}
+            max={SWAP_LIMITS.plays[1]}
+            step={1}
+            format={(v) => (v === 1 ? 'once' : `${v} times`)}
+            onChange={(plays) => setSwap({ plays })}
+          />
+        </div>
+      )}
+    </div>
+  )
+}
+
 const PARTS: { key: keyof PlayerParts; label: string }[] = [
   { key: 'artist', label: 'Artist info' },
   { key: 'lyrics', label: 'Lyrics' },
@@ -282,6 +327,7 @@ export default function PlayerMediaSection(): React.JSX.Element {
           <p className="mt-1 text-xs text-text-muted">{sizeLabel(total)} in your data folder</p>
         </>
       )}
+      <SwapSettings />
       <p className="mt-5 text-sm font-semibold text-text-subdued">Show on the page</p>
       <div className="mt-2 grid grid-cols-2 gap-2">
         {PARTS.map((p) => (

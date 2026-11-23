@@ -736,6 +736,49 @@ try {
     console.log('system sound capture:', got)
   }
 
+  if (want('swap')) {
+    // Backgrounds swap: a picture (3 s), a 1 s GIF (played twice) and a 1 s video
+    // (played twice), all for every song.
+    const gifFile = join(userData, 'spin.gif')
+    const clip = join(userData, 'short.mp4')
+    run(['-f', 'lavfi', '-i', 'testsrc2=s=160x90:r=10', '-t', '1', gifFile])
+    run([
+      ...['-f', 'lavfi', '-i', 'testsrc2=s=320x180:r=24', '-t', '1'],
+      ...['-c:v', 'libx264', '-pix_fmt', 'yuv420p', clip]
+    ])
+    await go('Local Files')
+    await win.getByRole('radio', { name: 'Unsorted' }).click()
+    await win.getByText('Glasshouse').first().dblclick()
+    await win.waitForTimeout(600)
+    for (const f of [join(userData, '03.png'), gifFile, clip]) {
+      await app.evaluate(({ dialog }, file) => {
+        dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [file] })
+      }, f)
+      await win.evaluate(() => window.api.invoke('player:add', { type: 'all' }))
+    }
+    await win.evaluate(() => {
+      localStorage.setItem('cp.playerSwap', JSON.stringify({ on: true, imageSeconds: 3, plays: 2 }))
+    })
+    await win.reload()
+    await win.waitForLoadState('domcontentloaded')
+    await win.waitForTimeout(1500)
+    await go('Local Files')
+    await win.getByRole('radio', { name: 'Unsorted' }).click()
+    await win.getByText('Glasshouse').first().dblclick()
+    await win.waitForTimeout(500)
+    await win.getByRole('button', { name: 'Player', exact: true }).first().click()
+    const seen = []
+    for (let i = 0; i < 24; i++) {
+      const now = await win.evaluate(() => {
+        const bg = document.querySelector('main [aria-hidden].-z-10 :is(img, video)')
+        return bg ? `${bg.tagName.toLowerCase()}:${bg.getAttribute('src')?.slice(-6)}` : 'none'
+      })
+      if (seen.at(-1)?.what !== now) seen.push({ at: i / 2, what: now })
+      await win.waitForTimeout(500)
+    }
+    console.log('swap sequence (s):', seen)
+  }
+
   if (want('applog')) {
     // The app log: startup line, a renderer error, a fake secret that must not be written.
     await win.evaluate(() => console.error('smoke renderer error token=abc123'))

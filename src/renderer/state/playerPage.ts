@@ -81,6 +81,37 @@ function readViz(): VizSettings {
   }
 }
 
+/** Swapping between backgrounds when more than one fits the song. */
+export interface SwapSettings {
+  on: boolean
+  /** How long a picture stays, in seconds. */
+  imageSeconds: number
+  /** How many times a video or GIF plays before the next background. */
+  plays: number
+}
+export const DEFAULT_SWAP: SwapSettings = { on: false, imageSeconds: 20, plays: 1 }
+export const SWAP_LIMITS = { imageSeconds: [3, 300], plays: [1, 10] } as const
+
+export function cleanSwap(raw: unknown): SwapSettings {
+  const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+  return {
+    on: r.on === true,
+    imageSeconds: Math.round(
+      clamp(r.imageSeconds, SWAP_LIMITS.imageSeconds, DEFAULT_SWAP.imageSeconds)
+    ),
+    plays: Math.round(clamp(r.plays, SWAP_LIMITS.plays, DEFAULT_SWAP.plays))
+  }
+}
+
+const SWAP_KEY = 'cp.playerSwap'
+function readSwap(): SwapSettings {
+  try {
+    return cleanSwap(JSON.parse(localStorage.getItem(SWAP_KEY) ?? '{}'))
+  } catch {
+    return DEFAULT_SWAP
+  }
+}
+
 const PARTS_KEY = 'cp.playerParts'
 const DEFAULT_PARTS: PlayerParts = { artist: true, lyrics: true, queue: true, visualizer: true }
 
@@ -99,6 +130,8 @@ interface PlayerPageState {
   setPart(part: keyof PlayerParts, on: boolean): void
   viz: VizSettings
   setViz(patch: Partial<VizSettings>): void
+  swap: SwapSettings
+  setSwap(patch: Partial<SwapSettings>): void
   add(scope: PlayerMediaScope): Promise<void>
   remove(id: string): Promise<void>
   setScope(id: string, scope: PlayerMediaScope): Promise<void>
@@ -116,6 +149,16 @@ export const usePlayerPage = create<PlayerPageState>((set, get) => {
     media: [],
     parts: readParts(),
     viz: readViz(),
+    swap: readSwap(),
+    setSwap(patch) {
+      const swap = cleanSwap({ ...get().swap, ...patch })
+      try {
+        localStorage.setItem(SWAP_KEY, JSON.stringify(swap))
+      } catch {
+        // per-device convenience only
+      }
+      set({ swap })
+    },
     setViz(patch) {
       const viz = cleanViz({ ...get().viz, ...patch })
       try {
