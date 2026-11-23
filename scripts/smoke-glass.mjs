@@ -627,6 +627,32 @@ try {
     await card.screenshot({ path: `${out}/artwork-genius-card.png` })
   }
 
+  if (want('minilyrics')) {
+    // Run after 'lyrics' (Glasshouse has synced lyrics): the mini player as a lyric bar.
+    await setPrefs({ miniLayout: 'lyrics' })
+    await go('Local Files')
+    await win.getByRole('radio', { name: 'Unsorted' }).click()
+    await win.getByText('Glasshouse').first().dblclick()
+    await win.waitForTimeout(2500)
+    await win.evaluate(() => window.api.invoke('mini:toggle'))
+    await win.waitForTimeout(2500)
+    const mini = app.windows().find((w) => w !== win)
+    if (mini) {
+      const size = await app.evaluate(({ BrowserWindow }) =>
+        BrowserWindow.getAllWindows().map((w) => w.getSize().join('x'))
+      )
+      console.log('mini sizes:', size, await mini.locator('p').allTextContents())
+      await mini.screenshot({ path: `${out}/artwork-mini-lyricsbar.png` })
+      await win.evaluate(() => window.api.invoke('mini:toggle'))
+    }
+    await setPrefs({ miniLayout: 'player' })
+    // A song with no lyrics: the page offers a search with another title and artist.
+    await win.getByText('White Room').first().dblclick()
+    await win.getByRole('button', { name: 'Lyrics', exact: true }).click()
+    await win.getByRole('button', { name: 'Search', exact: true }).waitFor({ timeout: 20000 })
+    await shot('artwork-lyrics-search-again')
+  }
+
   if (want('theme')) {
     // Custom theme: pick it, change colours, glass and font, use a picture, then save
     // the theme to a file and load it back.

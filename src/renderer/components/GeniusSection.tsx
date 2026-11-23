@@ -54,14 +54,9 @@ export default function GeniusSection(): React.JSX.Element {
           </p>
         </div>
         {has && (
-          <div className="flex gap-1">
-            <button className={ghost} disabled={busy} onClick={() => void test()}>
-              Test token
-            </button>
-            <button className={ghost} disabled={busy} onClick={() => void save(null)}>
-              Remove token
-            </button>
-          </div>
+          <button className={ghost} disabled={busy} onClick={() => void save(null)}>
+            Remove token
+          </button>
         )}
       </div>
       {has ? (

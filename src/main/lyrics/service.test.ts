@@ -198,3 +198,24 @@ describe('Genius backup (QoL 4)', () => {
     expect(later.asked.filter((u) => u.includes('lrclib'))).toEqual([])
   })
 })
+
+describe('search again (QoL 4)', () => {
+  it('asks LRCLIB with your title and artist, without the length, and keeps a find', async () => {
+    replies.push({ status: 404, body: {} }) // get
+    replies.push({ status: 200, body: [{ plainLyrics: 'Found it', duration: 99 }] }) // search
+    const lyrics = make()
+    const r = await lyrics.search(track({ title: '06 Track 6', artists: [] }), {
+      title: 'Glasshouse',
+      artist: 'Neon Harbor'
+    })
+    expect(r?.plain).toBe('Found it')
+    expect(calls[0]).toContain('track_name=Glasshouse')
+    expect(calls[0]).toContain('artist_name=Neon+Harbor')
+    expect(calls[0]).not.toContain('duration=')
+    expect((await lyrics.get(track({ title: '06 Track 6', artists: [] }))).plain).toBe('Found it')
+  })
+
+  it('needs a title and an artist', async () => {
+    await expect(make().search(track(), { title: ' ', artist: 'x' })).rejects.toThrow(/title/)
+  })
+})

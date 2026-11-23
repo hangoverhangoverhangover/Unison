@@ -1,4 +1,5 @@
-import { Maximize2, MicVocal, Pause, Play, SkipBack, SkipForward, X } from 'lucide-react'
+import { Maximize2, MicVocal, PanelTop, Pause, Play, SkipBack, SkipForward, X } from 'lucide-react'
+import { DEFAULT_MINI_PARTS, type MiniLayout, type MiniParts } from '@shared/config'
 import { useEffect, useRef, useState } from 'react'
 import { bindAppearance } from '@renderer/state/appearance'
 import type { MiniCommand, MiniState } from '@shared/match'
@@ -15,7 +16,7 @@ function livePosition(s: MiniState, now: number): number {
   return s.durationMs > 0 ? Math.min(Math.max(0, p), s.durationMs) : Math.max(0, p)
 }
 
-function Progress({ state }: { state: MiniState }): React.JSX.Element {
+function Progress({ state, bare }: { state: MiniState; bare?: boolean }): React.JSX.Element {
   const fillRef = useRef<HTMLSpanElement>(null)
   const timeRef = useRef<HTMLSpanElement>(null)
   // rAF writes straight to the DOM: no React render per frame.
@@ -41,7 +42,10 @@ function Progress({ state }: { state: MiniState }): React.JSX.Element {
 
   return (
     <>
-      <span className="pointer-events-none absolute right-3 bottom-2.5 text-[11px] text-text-subdued tabular-nums">
+      {/* The lyric bar has no room for the times; just the line. */}
+      <span
+        className={`pointer-events-none absolute right-3 bottom-2.5 text-[11px] text-text-subdued tabular-nums ${bare ? 'hidden' : ''}`}
+      >
         <span ref={timeRef}>0:00</span> / {formatTime(state.durationMs)}
       </span>
       <button
@@ -82,12 +86,12 @@ function WindowButton({
   )
 }
 
-/** The synced lyric line playing now, or null (no lyrics, not synced, or between lines). */
-function useMiniLyric(state: MiniState | null): string | null {
+/** The synced lyric line playing now and the next one (null: no synced lyrics, or between lines). */
+function useMiniLyric(state: MiniState | null): { now: string | null; next: string | null } {
   // Lyrics are kept with the id of the song they belong to, so a new song shows none
   // until its own arrive.
   const [loaded, setLoaded] = useState<{ id: string; lines: LyricLine[] | null } | null>(null)
-  const [text, setText] = useState<string | null>(null)
+  const [text, setText] = useState<{ now: string | null; next: string | null }>(NO_LINE)
   const track = state?.track ?? null
   const id = track?.id ?? null
   useEffect(() => {
@@ -109,16 +113,111 @@ function useMiniLyric(state: MiniState | null): string | null {
     let raf = 0
     const tick = (): void => {
       const i = activeLine(lines, livePosition(state, Date.now()))
-      setText(i >= 0 ? lines[i]!.text || null : null)
+      const now = i >= 0 ? lines[i]!.text || null : null
+      const next = lines[i + 1]?.text || null
+      setText((t) => (t.now === now && t.next === next ? t : { now, next }))
       if (state.status === 'playing') raf = requestAnimationFrame(tick)
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
   }, [state, lines])
-  return lines?.length ? text : null
+  return lines?.length ? text : NO_LINE
 }
 
-/** The mini player window: artwork, title, controls and progress. Drag it anywhere. */
+const NO_LINE = { now: null, next: null }
+
+/** The mini player's layout and parts (Settings → General → Mini player). */
+function useMiniPrefs(): { layout: MiniLayout; parts: MiniParts } {
+  const [prefs, setPrefs] = useState<{ layout: MiniLayout; parts: MiniParts }>({
+    layout: 'player',
+    parts: DEFAULT_MINI_PARTS
+  })
+  useEffect(() => {
+    const take = (p: { miniLayout: MiniLayout; miniParts: MiniParts }): void =>
+      setPrefs({ layout: p.miniLayout, parts: p.miniParts })
+    void window.api.invoke('prefs:get').then(take)
+    return window.api.on('prefs:changed', take)
+  }, [])
+  return prefs
+}
+
+function Controls({
+  state,
+  playing,
+  small
+}: {
+  state: MiniState | null
+  playing: boolean
+  small?: boolean
+}): React.JSX.Element {
+  const track = state?.track ?? null
+  const side = small ? 'size-7' : 'size-8'
+  const icon = small ? 15 : 18
+  return (
+    <div className="flex items-center gap-1">
+      <button
+        aria-label="Previous"
+        disabled={!track}
+        onClick={() => send({ type: 'previous' })}
+        className={`no-drag flex ${side} items-center justify-center rounded-full text-text-subdued transition-colors duration-[140ms] hover:text-text disabled:opacity-40`}
+      >
+        <SkipBack size={icon} fill="currentColor" />
+      </button>
+      <button
+        aria-label={playing ? 'Pause' : 'Play'}
+        disabled={!track}
+        onClick={() => send({ type: 'toggle' })}
+        className={`no-drag flex ${small ? 'size-8' : 'size-9'} items-center justify-center rounded-full bg-text text-base transition-transform duration-[140ms] hover:scale-105 active:scale-95 disabled:opacity-40`}
+      >
+        {playing ? (
+          <Pause size={icon} fill="currentColor" />
+        ) : (
+          <Play size={icon} fill="currentColor" className="translate-x-px" />
+        )}
+      </button>
+      <button
+        aria-label="Next"
+        disabled={!track || !state?.hasNext}
+        onClick={() => send({ type: 'next' })}
+        className={`no-drag flex ${side} items-center justify-center rounded-full text-text-subdued transition-colors duration-[140ms] hover:text-text disabled:opacity-40`}
+      >
+        <SkipForward size={icon} fill="currentColor" />
+      </button>
+    </div>
+  )
+}
+
+function WindowButtons({ layout }: { layout: MiniLayout }): React.JSX.Element {
+  return (
+    <>
+      <WindowButton
+        label={layout === 'lyrics' ? 'Show the full mini player' : 'Lyrics only'}
+        onClick={() =>
+          void window.api.invoke('prefs:set', {
+            miniLayout: layout === 'lyrics' ? 'player' : 'lyrics'
+          })
+        }
+      >
+        {layout === 'lyrics' ? <PanelTop size={13} /> : <MicVocal size={13} />}
+      </WindowButton>
+      <WindowButton
+        label="Open main window"
+        onClick={() => void window.api.invoke('mini:showMain')}
+      >
+        <Maximize2 size={13} />
+      </WindowButton>
+      <WindowButton label="Close mini player" onClick={() => void window.api.invoke('mini:toggle')}>
+        <X size={14} />
+      </WindowButton>
+    </>
+  )
+}
+
+/**
+ * The mini player window. Two layouts (QoL 4): the player (artwork, title, controls,
+ * progress) or a lyric bar (the current line large, the next one faint). What shows is
+ * set in Settings → General → Mini player. Drag it anywhere.
+ */
 export default function MiniApp(): React.JSX.Element {
   useEffect(() => bindAppearance(), [])
   const [state, setState] = useState<MiniState | null>(null)
@@ -128,13 +227,14 @@ export default function MiniApp(): React.JSX.Element {
     return window.api.on('mini:state', setState)
   }, [])
 
-  const lyric = useMiniLyric(state)
+  const { layout, parts } = useMiniPrefs()
+  const lyric = useMiniLyric(parts.lyric || layout === 'lyrics' ? state : null)
   const track = state?.track ?? null
   const playing = state?.status === 'playing' || state?.status === 'loading'
-  const art = track?.artworkUrl
+  const art = parts.art ? track?.artworkUrl : undefined
 
-  return (
-    <div className="drag relative h-screen select-none overflow-hidden bg-base text-text">
+  const backdrop = (
+    <>
       {art && (
         <img
           src={art}
@@ -145,22 +245,65 @@ export default function MiniApp(): React.JSX.Element {
         />
       )}
       <div className="absolute inset-0 bg-gradient-to-r from-base/70 to-base/90" />
+    </>
+  )
 
-      <div className="relative flex h-full items-center gap-3 py-3 pr-3 pl-3">
-        <div className="size-[80px] flex-none overflow-hidden rounded-md bg-raised shadow-[0_6px_18px_rgba(0,0,0,0.4)]">
-          {art && <img src={art} alt="" className="size-full object-cover" />}
+  if (layout === 'lyrics')
+    return (
+      <div className="drag group relative h-screen select-none overflow-hidden bg-base text-text">
+        {backdrop}
+        <div className="relative flex h-full flex-col items-center justify-center px-6 text-center">
+          {lyric.now ? (
+            <>
+              <p className="w-full truncate text-lg font-extrabold" title={lyric.now}>
+                {lyric.now}
+              </p>
+              {lyric.next && (
+                <p className="w-full truncate text-xs text-text-muted">{lyric.next}</p>
+              )}
+            </>
+          ) : (
+            <>
+              <p className="w-full truncate text-md font-bold">
+                {track?.title ?? 'Nothing playing'}
+              </p>
+              <p className="w-full truncate text-xs text-text-subdued">
+                {track
+                  ? track.artists.join(', ') || 'Unknown artist'
+                  : 'Play something in the main window'}
+              </p>
+            </>
+          )}
         </div>
+        {/* Controls and window buttons appear on hover, so the bar stays just words. */}
+        <div className="absolute inset-y-0 right-2 flex items-center gap-1 opacity-0 transition-opacity duration-[140ms] group-hover:opacity-100">
+          {parts.controls && <Controls state={state} playing={playing} small />}
+          <WindowButtons layout={layout} />
+        </div>
+        {parts.progress && state && track && <Progress state={state} bare />}
+      </div>
+    )
+
+  return (
+    <div className="drag relative h-screen select-none overflow-hidden bg-base text-text">
+      {backdrop}
+      <div className="relative flex h-full items-center gap-3 py-3 pr-3 pl-3">
+        {parts.art && (
+          <div className="size-[80px] flex-none overflow-hidden rounded-md bg-raised shadow-[0_6px_18px_rgba(0,0,0,0.4)]">
+            {art && <img src={art} alt="" className="size-full object-cover" />}
+          </div>
+        )}
         <div className="flex min-w-0 flex-1 flex-col justify-between self-stretch pb-2">
-          <div className="min-w-0 pr-14">
+          <div className="min-w-0 pr-20">
             <p className="truncate text-md font-bold">{track?.title ?? 'Nothing playing'}</p>
-            {lyric ? (
+            {parts.lyric && lyric.now ? (
               // The current lyric line takes the artist's place while it plays.
               <p
                 className="flex items-center gap-1.5 text-sm font-semibold text-text"
-                title={lyric}
+                title={lyric.now}
               >
                 <MicVocal size={12} className="flex-none text-accent" />
-                <span className="truncate">{lyric}</span>
+                <span className="truncate">{lyric.now}</span>
               </p>
             ) : (
               <p className="flex items-center gap-1.5 text-sm text-text-subdued">
@@ -173,53 +316,13 @@ export default function MiniApp(): React.JSX.Element {
               </p>
             )}
           </div>
-          <div className="flex items-center gap-1">
-            <button
-              aria-label="Previous"
-              disabled={!track}
-              onClick={() => send({ type: 'previous' })}
-              className="no-drag flex size-8 items-center justify-center rounded-full text-text-subdued transition-colors duration-[140ms] hover:text-text disabled:opacity-40"
-            >
-              <SkipBack size={18} fill="currentColor" />
-            </button>
-            <button
-              aria-label={playing ? 'Pause' : 'Play'}
-              disabled={!track}
-              onClick={() => send({ type: 'toggle' })}
-              className="no-drag flex size-9 items-center justify-center rounded-full bg-text text-base transition-transform duration-[140ms] hover:scale-105 active:scale-95 disabled:opacity-40"
-            >
-              {playing ? (
-                <Pause size={18} fill="currentColor" />
-              ) : (
-                <Play size={18} fill="currentColor" className="translate-x-px" />
-              )}
-            </button>
-            <button
-              aria-label="Next"
-              disabled={!track || !state?.hasNext}
-              onClick={() => send({ type: 'next' })}
-              className="no-drag flex size-8 items-center justify-center rounded-full text-text-subdued transition-colors duration-[140ms] hover:text-text disabled:opacity-40"
-            >
-              <SkipForward size={18} fill="currentColor" />
-            </button>
-          </div>
+          {parts.controls && <Controls state={state} playing={playing} />}
         </div>
         <div className="absolute top-2 right-2 flex gap-1">
-          <WindowButton
-            label="Open main window"
-            onClick={() => void window.api.invoke('mini:showMain')}
-          >
-            <Maximize2 size={13} />
-          </WindowButton>
-          <WindowButton
-            label="Close mini player"
-            onClick={() => void window.api.invoke('mini:toggle')}
-          >
-            <X size={14} />
-          </WindowButton>
+          <WindowButtons layout={layout} />
         </div>
       </div>
-      {state && track && <Progress state={state} />}
+      {parts.progress && state && track && <Progress state={state} />}
     </div>
   )
 }

@@ -210,7 +210,8 @@ app.whenReady().then(async () => {
     db,
     getMainWindow: () => mainWindow,
     getTheme: () => settings.getPrefs().theme,
-    getCustomTheme: () => settings.getPrefs().customTheme
+    getCustomTheme: () => settings.getPrefs().customTheme,
+    getLayout: () => settings.getPrefs().miniLayout
   })
   const mediaKeys = registerMediaKeys((key) => emit(getWebContents(), 'media:key', key))
   const settings = registerSettings({ db, getWebContents })
@@ -225,8 +226,9 @@ app.whenReady().then(async () => {
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.setTitleBarOverlay(overlayColors(prefs.theme, prefs.customTheme))
     }
-    // The mini player follows the theme too.
+    // The mini player follows the theme too, and its layout (player or lyric bar).
     emit(mini.webContents(), 'prefs:changed', prefs)
+    mini.relayout()
   })
   hooks.autoDownload = (tracks) => {
     const sc = tracks.filter((t) => t.provider === 'soundcloud')

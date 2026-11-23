@@ -1,9 +1,13 @@
 // Saved session, app prefs and audio settings (QoL round 2), JSON values in the settings table.
 import {
   DEFAULT_APP_PREFS,
+  DEFAULT_MINI_PARTS,
+  MINI_LAYOUTS,
   PANEL_TABS,
   THEMES,
   type AppPrefs,
+  type MiniLayout,
+  type MiniParts,
   type PanelTab,
   type Theme
 } from '@shared/config'
@@ -196,6 +200,14 @@ const VALIDATORS: { [K in keyof AppPrefs]: (v: unknown) => AppPrefs[K] } = {
   autoDownloadLikes: checkBoolean('autoDownloadLikes'),
   tidyScTitles: checkBoolean('tidyScTitles'),
   discordLocalArt: checkBoolean('discordLocalArt'),
+  miniLayout: checkOneOf<MiniLayout>('miniLayout', MINI_LAYOUTS),
+  miniParts: (v) => {
+    if (!isObject(v)) throw new Error('Setting miniParts must be an object.')
+    const out = { ...DEFAULT_MINI_PARTS }
+    for (const k of Object.keys(out) as (keyof MiniParts)[])
+      if (typeof v[k] === 'boolean') out[k] = v[k]
+    return out
+  },
   jamRelayUrl: normalizeRelayUrl,
   jamName: normalizeJamName,
   jamUnplayable: (v) => {

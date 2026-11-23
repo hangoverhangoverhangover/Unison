@@ -7,11 +7,20 @@ import type { MiniState } from '@shared/match'
 import type { Db } from './db'
 import { emit, handle } from './ipc'
 import { APP_ICON, loadRenderer, shellBackground } from './window'
-import type { Theme } from '@shared/config'
+import type { MiniLayout, Theme } from '@shared/config'
 import type { CustomTheme } from '@shared/theme'
 
 export const MINI_WIDTH = 380
 export const MINI_HEIGHT = 112
+/** The lyric-bar layout (QoL 4): wider and shorter. */
+export const MINI_LYRICS_WIDTH = 480
+export const MINI_LYRICS_HEIGHT = 76
+
+export function miniSize(layout: MiniLayout | undefined): { width: number; height: number } {
+  return layout === 'lyrics'
+    ? { width: MINI_LYRICS_WIDTH, height: MINI_LYRICS_HEIGHT }
+    : { width: MINI_WIDTH, height: MINI_HEIGHT }
+}
 /** Gap from the screen edge for the first position. */
 const MARGIN = 24
 const BOUNDS_KEY = 'mini.position'
@@ -30,6 +39,7 @@ export interface MiniOptions {
   /** Current theme, for the window colour before first paint. */
   getTheme(): Theme
   getCustomTheme?(): CustomTheme
+  getLayout?(): MiniLayout
 }
 
 function readPosition(db: Db): { x: number; y: number } | undefined {
@@ -70,6 +80,8 @@ export function registerMini(opts: MiniOptions): {
   /** The mini window's contents while it's open (prefs changes go to it too). */
   webContents(): Electron.WebContents | undefined
   toggle(): boolean
+  /** Resize for the current layout (player or lyric bar), keeping the bottom edge. */
+  relayout(): void
   dispose(): void
 } {
   let win: BrowserWindow | null = null
@@ -83,14 +95,14 @@ export function registerMini(opts: MiniOptions): {
 
   function open(): void {
     const area = screen.getPrimaryDisplay().workArea
+    const size = miniSize(opts.getLayout?.())
     const pos = readPosition(opts.db) ?? {
-      x: area.x + area.width - MINI_WIDTH - MARGIN,
-      y: area.y + area.height - MINI_HEIGHT - MARGIN
+      x: area.x + area.width - size.width - MARGIN,
+      y: area.y + area.height - size.height - MARGIN
     }
     win = new BrowserWindow({
       ...pos,
-      width: MINI_WIDTH,
-      height: MINI_HEIGHT,
+      ...size,
       frame: false,
       resizable: false,
       maximizable: false,
@@ -195,6 +207,14 @@ export function registerMini(opts: MiniOptions): {
   return {
     close,
     toggle,
+    relayout() {
+      if (!win || win.isDestroyed()) return
+      const size = miniSize(opts.getLayout?.())
+      const b = win.getBounds()
+      if (b.width === size.width && b.height === size.height) return
+      // Keep the bottom-right corner where it was (it usually sits in a screen corner).
+      win.setBounds({ x: b.x + b.width - size.width, y: b.y + b.height - size.height, ...size })
+    },
     webContents: () => (win && !win.isDestroyed() ? win.webContents : undefined),
     dispose() {
       if (saveTimer) clearTimeout(saveTimer)

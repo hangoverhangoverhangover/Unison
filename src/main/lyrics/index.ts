@@ -11,6 +11,7 @@ const CHANNELS: InvokeChannel[] = [
   'lyrics:get',
   'lyrics:save',
   'lyrics:delete',
+  'lyrics:search',
   'genius:hasToken',
   'genius:setToken',
   'genius:test'
@@ -40,6 +41,11 @@ export function registerLyrics(opts: { db: Db }): { dispose(): void } {
     userAgent
   })
   handle('lyrics:get', (track) => lyrics.get(track))
+  handle('lyrics:search', async (track, query) => {
+    const r = await lyrics.search(track, query)
+    if (!r) throw new Error("Couldn't reach LRCLIB or Genius. Try again in a moment.")
+    return r
+  })
   handle('genius:hasToken', () => geniusToken() !== null)
   handle('genius:test', async () => {
     const token = geniusToken()

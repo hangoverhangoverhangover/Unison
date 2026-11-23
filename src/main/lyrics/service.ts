@@ -66,6 +66,11 @@ function fromUser(text: string): LyricsResult {
 
 export function createLyrics(deps: LyricsDeps): {
   get(track: Track): Promise<LyricsResult>
+  /**
+   * Look again with your own title and artist (skipping the cache): LRCLIB, then
+   * Genius. A find is kept for this track. Null when neither could answer.
+   */
+  search(track: Track, query: { title: string; artist: string }): Promise<LyricsResult | null>
   save(track: Track, text: string): void
   remove(track: Track): void
 } {
@@ -166,6 +171,25 @@ export function createLyrics(deps: LyricsDeps): {
       if (result.source === 'none' && token)
         return remember(track, await backup(track, token), now())
       deps.settings.set(CACHE_PREFIX + track.id, JSON.stringify({ at: now(), result }))
+      return result
+    },
+
+    async search(track, query) {
+      const title = query.title.trim()
+      const artist = query.artist.trim()
+      if (!title || !artist) throw new Error('Type a title and an artist.')
+      const asked: Track = { ...track, title, artists: [artist] }
+      // A different title or artist can't use the file's length to match.
+      if (title !== track.title || artist !== track.artists[0]) asked.durationMs = 0
+      const found = await lookup(asked)
+      let result = found ?? NONE
+      if (result.source === 'none') {
+        const b = await backup(asked, deps.geniusToken?.() ?? null)
+        if (b.result.source === 'none' && !found && !b.asked) return null
+        result = b.result
+      }
+      if (result.source !== 'none')
+        deps.settings.set(CACHE_PREFIX + track.id, JSON.stringify({ at: now(), result }))
       return result
     },
 

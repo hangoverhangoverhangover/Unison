@@ -29,6 +29,8 @@ interface LyricsState {
   editorOpen: boolean
   setEditorOpen(open: boolean): void
   save(text: string): Promise<boolean>
+  /** Look again with your own title and artist; true when lyrics were found. */
+  search(title: string, artist: string): Promise<boolean>
   remove(): Promise<void>
 }
 
@@ -57,6 +59,19 @@ export const useLyrics = create<LyricsState>((set, get) => ({
       return true
     } catch (err) {
       set({ error: ipcMessage(err) })
+      return false
+    }
+  },
+  async search(title, artist) {
+    const track = get().track
+    if (!track) return false
+    set({ loading: true, error: undefined })
+    try {
+      const result = await window.api.invoke('lyrics:search', track, { title, artist })
+      if (get().track?.id === track.id) set({ result, loading: false })
+      return result.source !== 'none'
+    } catch (err) {
+      set({ loading: false, error: ipcMessage(err) })
       return false
     }
   },

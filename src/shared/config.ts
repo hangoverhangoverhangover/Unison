@@ -45,6 +45,24 @@ export interface BootTheme {
  */
 export const BOOT_THEME_CHANNEL = 'prefs:bootTheme'
 
+/** Mini player look (QoL 4): the full player, or only a lyric bar. */
+export type MiniLayout = 'player' | 'lyrics'
+export const MINI_LAYOUTS: readonly MiniLayout[] = ['player', 'lyrics']
+/** What the mini player shows. */
+export interface MiniParts {
+  art: boolean
+  /** The current lyric line (in place of the artist in the player layout). */
+  lyric: boolean
+  controls: boolean
+  progress: boolean
+}
+export const DEFAULT_MINI_PARTS: MiniParts = {
+  art: true,
+  lyric: true,
+  controls: true,
+  progress: true
+}
+
 /** Tabs of the right-hand panel. */
 export type PanelTab = 'queue' | 'details' | 'jam'
 export const PANEL_TABS: readonly PanelTab[] = ['queue', 'details', 'jam']
@@ -59,6 +77,8 @@ export interface AppPrefs {
   tidyScTitles: boolean
   /** Local files' own covers on Discord, through Unison's relay (QoL 4). */
   discordLocalArt: boolean
+  miniLayout: MiniLayout
+  miniParts: MiniParts
   /** Jam relay base URL (https://…). Empty = use the built-in relay. */
   jamRelayUrl: string
   /** Name shown to others in a Jam. */
@@ -83,6 +103,8 @@ export const DEFAULT_APP_PREFS: AppPrefs = {
   autoDownloadLikes: false,
   tidyScTitles: true,
   discordLocalArt: true,
+  miniLayout: 'player',
+  miniParts: DEFAULT_MINI_PARTS,
   jamRelayUrl: '',
   jamName: '',
   jamUnplayable: 'match',
