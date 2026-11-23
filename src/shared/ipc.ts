@@ -53,6 +53,8 @@ export interface IpcInvokeMap {
   'app:getInfo': () => AppInfo
   /** Restart the app (e.g. to apply a new Spotify Client ID). */
   'app:relaunch': () => void
+  /** Open the folder with the app log (freezes, crashes, errors; no secrets). */
+  'app:openLogs': () => void
   'config:getPublic': () => PublicConfig
 
   /** Watched music folders, absolute paths. */
@@ -483,6 +485,7 @@ const invokeChannels = {
   'spotify:getClientId': true,
   'spotify:setClientId': true,
   'app:relaunch': true,
+  'app:openLogs': true,
   'soundcloud:isFollowing': true,
   'soundcloud:setFollowing': true,
   'soundcloud:isReposted': true,

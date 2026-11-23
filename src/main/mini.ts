@@ -7,6 +7,7 @@ import type { MiniState } from '@shared/match'
 import type { Db } from './db'
 import { emit, handle } from './ipc'
 import { APP_ICON, loadRenderer, shellBackground } from './window'
+import { watchWindow } from './diagLog'
 import type { MiniLayout, Theme } from '@shared/config'
 import type { CustomTheme } from '@shared/theme'
 
@@ -128,6 +129,7 @@ export function registerMini(opts: MiniOptions): {
       // window shown inactive. 'floating' keeps it above normal windows.
       win.setAlwaysOnTop(true, 'floating')
     })
+    watchWindow(win, 'mini')
     win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
     // The Start menu, the taskbar or Win+D can push it behind other windows or minimize
     // it, and with no taskbar button it then looks gone. Put it back on top whenever

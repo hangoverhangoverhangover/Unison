@@ -4,7 +4,7 @@
 // Usage: npm run build first, then node scripts/smoke-glass.mjs [view ...]
 import { _electron as electron } from 'playwright-core'
 import { execFileSync } from 'child_process'
-import { mkdirSync, mkdtempSync, rmSync } from 'fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join, resolve } from 'path'
 
@@ -613,6 +613,22 @@ try {
     )
     await shot('artwork-player-full')
     await win.keyboard.press('Escape')
+  }
+
+  if (want('applog')) {
+    // The app log: startup line, a renderer error, a fake secret that must not be written.
+    await win.evaluate(() => console.error('smoke renderer error token=abc123'))
+    await app.evaluate(() => console.log('smoke main line secret=shh'))
+    await new Promise((r) => setTimeout(r, 500))
+    const log = readFileSync(join(userData, 'logs', 'unison.log'), 'utf8')
+    for (const want of [
+      'started (Electron',
+      'smoke renderer error token=[hidden]',
+      'smoke main line secret=[hidden]'
+    ])
+      if (!log.includes(want)) throw new Error(`app log is missing: ${want}`)
+    if (log.includes('abc123') || log.includes('shh')) throw new Error('app log wrote a secret')
+    console.log('app log ok')
   }
 
   if (want('genius')) {

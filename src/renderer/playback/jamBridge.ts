@@ -45,7 +45,13 @@ export function startJam(controller: PlaybackController): () => void {
       prefListeners.add(listener)
       return () => prefListeners.delete(listener)
     },
-    report: (patch) => useJam.setState(patch)
+    report: (patch) => {
+      // Warnings reach the app log (main copies renderer warnings), for bug reports.
+      if (patch.notice) console.warn(`jam notice: ${patch.notice}`)
+      if (patch.skipped) console.warn(`jam skipped: ${patch.skipped.reason}`)
+      if (patch.substitute) console.warn(`jam substitute: ${patch.substitute.reason}`)
+      useJam.setState(patch)
+    }
   })
 
   return () => {

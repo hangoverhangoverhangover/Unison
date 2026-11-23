@@ -37,6 +37,7 @@ import { registerTray } from './tray'
 import { registerTransfer } from './transfer'
 import { registerTags } from './tags'
 import { registerJam } from './jam'
+import { logDir, startLog, watchWindow } from './diagLog'
 
 // Must be set before the app is ready. Lets playback start without a click,
 // e.g. resuming the queue or media-key play on launch.
@@ -80,6 +81,8 @@ function defaultDownloadFolder(): string {
 if (!app.requestSingleInstanceLock()) app.exit(0)
 
 app.whenReady().then(async () => {
+  // First: the log copies console output, so it must start before anything logs.
+  disposers.push(startLog())
   electronApp.setAppUserModelId('com.tripp.combinedplayer')
 
   // F12 toggles DevTools in dev; Ctrl+R reload is disabled in production.
@@ -101,6 +104,10 @@ app.whenReady().then(async () => {
     platform: process.platform
   }))
   handle('config:getPublic', () => toPublicConfig(keys))
+  handle('app:openLogs', async () => {
+    const err = await shell.openPath(logDir())
+    if (err) throw new Error(err)
+  })
   handle('app:relaunch', () => {
     app.relaunch()
     app.quit()
@@ -335,6 +342,7 @@ app.whenReady().then(async () => {
   const openMain = (): void => {
     mainWindow = createMainWindow(settings.getPrefs().theme, settings.getPrefs().customTheme)
     const win = mainWindow
+    watchWindow(win, 'main')
     // Close to tray: hide instead of closing, so playback keeps going.
     win.on('close', (e) => tray.onMainClose(e, win))
     // Taskbar Previous / Play / Next (Windows drops them when the window is hidden).

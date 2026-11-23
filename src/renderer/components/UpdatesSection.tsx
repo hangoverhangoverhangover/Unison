@@ -1,4 +1,4 @@
-import { ExternalLink, RefreshCw, Rocket } from 'lucide-react'
+import { ExternalLink, FileText, RefreshCw, Rocket } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { RELEASES_URL, type UpdateStatus } from '@shared/updates'
 
@@ -81,6 +81,13 @@ export default function UpdatesSection(): React.JSX.Element {
       >
         What’s new <ExternalLink size={12} />
       </a>
+      {/* The app log (freezes, crashes, errors; never keys or tokens) for bug reports. */}
+      <button
+        onClick={() => void window.api.invoke('app:openLogs')}
+        className="mt-3 ml-4 inline-flex items-center gap-1 text-sm font-semibold text-text-subdued hover:text-text hover:underline"
+      >
+        <FileText size={12} /> Open log folder
+      </button>
     </section>
   )
 }
