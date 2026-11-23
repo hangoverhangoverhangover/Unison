@@ -624,6 +624,16 @@ try {
     await win.getByRole('button', { name: 'Player', exact: true }).first().click()
     await win.waitForTimeout(1200)
     await shot('artwork-player-strip')
+    await win.waitForTimeout(800)
+    console.log(
+      'level bar colour (artwork theme):',
+      await win.locator('main canvas').evaluate((c) => {
+        const ctx = c.getContext('2d')
+        const d = ctx.getImageData(0, c.height - 1, c.width, 1).data
+        for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 0) return [d[i], d[i + 1], d[i + 2]]
+        return null
+      })
+    )
     const items = win.locator('main button[aria-label^="Play "]')
     await items.nth(1).hover()
     await win.waitForTimeout(500)

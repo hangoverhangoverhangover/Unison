@@ -134,7 +134,7 @@ const STYLES: { id: VizStyle; label: string }[] = [
   { id: 'wave', label: 'Wave' }
 ]
 const COLORS: { id: VizColor; label: string }[] = [
-  { id: 'accent', label: 'Theme accent' },
+  { id: 'accent', label: 'Match theme' },
   { id: 'white', label: 'White' },
   { id: 'custom', label: 'Your colour' }
 ]

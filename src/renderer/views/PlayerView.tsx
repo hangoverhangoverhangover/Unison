@@ -12,6 +12,8 @@ import { usePlayerPage, type VizSettings } from '@renderer/state/playerPage'
 import { useUi } from '@renderer/state/ui'
 import { useLyricPosition } from '@renderer/lib/useLyricPosition'
 import { useFullscreen } from '@renderer/lib/useFullscreen'
+import { artColor } from '@renderer/lib/artColor'
+import { useAppearance } from '@renderer/state/appearance'
 import { blur } from '@renderer/styles/tokens'
 import Artwork from '@renderer/components/Artwork'
 
@@ -230,10 +232,14 @@ function QueueStrip(): React.JSX.Element | null {
   )
 }
 
-/** The bar colour: the theme accent, white, or your own. */
-function vizColor(viz: VizSettings): string {
+/**
+ * The bar colour: the theme's (the cover's main colour in the artwork theme, else the
+ * accent), white, or your own.
+ */
+function vizColor(viz: VizSettings, art: string | null): string {
   if (viz.color === 'white') return '#ffffff'
   if (viz.color === 'custom') return viz.customColor
+  if (art) return art
   const accent = getComputedStyle(document.documentElement).getPropertyValue('--color-accent')
   return accent.trim() || '#7289da'
 }
@@ -250,6 +256,21 @@ function Visualizer(): React.JSX.Element {
   useEffect(() => {
     vizRef.current = viz
   }, [viz])
+  // Artwork theme: the bars take the cover's colour.
+  const artTheme = useAppearance((s) => s.theme === 'artwork')
+  const cover = usePlayback((s) => s.current?.track.artworkUrl)
+  const artRef = useRef<string | null>(null)
+  useEffect(() => {
+    artRef.current = null
+    if (!artTheme) return
+    let live = true
+    void artColor(cover).then((c) => {
+      if (live) artRef.current = c
+    })
+    return () => {
+      live = false
+    }
+  }, [artTheme, cover])
   useEffect(() => {
     const canvas = ref.current
     if (!canvas) return
@@ -272,7 +293,7 @@ function Visualizer(): React.JSX.Element {
                 (data[Math.floor((i / n) ** 1.6 * (SPECTRUM_BINS * 0.7))]! / 255) * v.sensitivity
               )
             : 0
-        const color = vizColor(v)
+        const color = vizColor(v, artRef.current)
         ctx.fillStyle = color
         ctx.strokeStyle = color
         const min = 2 * devicePixelRatio

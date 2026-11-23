@@ -108,9 +108,9 @@ function ServiceSection({ provider }: { provider: ServiceProvider }): React.JSX.
 const GROUPS = [
   { id: 'accounts', label: 'Accounts' },
   { id: 'appearance', label: 'Appearance' },
+  { id: 'player', label: 'Player' },
   { id: 'sound', label: 'Sound' },
   { id: 'general', label: 'General' },
-  { id: 'player', label: 'Player' },
   { id: 'jam', label: 'Jam' },
   { id: 'folders', label: 'Music folders' },
   { id: 'shortcuts', label: 'Shortcuts' }
@@ -211,15 +211,15 @@ export default function SettingsView(): React.JSX.Element {
             <Group id="appearance">
               <AppearanceSection />
             </Group>
+            <Group id="player">
+              <PlayerMediaSection />
+            </Group>
             <Group id="sound">
               <SoundSection />
             </Group>
             <Group id="general">
               <BehaviourSection />
               <UpdatesSection />
-            </Group>
-            <Group id="player">
-              <PlayerMediaSection />
             </Group>
             <Group id="jam">
               <JamSection />
