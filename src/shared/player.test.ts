@@ -39,6 +39,13 @@ describe('mediaFor', () => {
     expect(mediaFor([], track(['Hi-C']))).toEqual([])
   })
 
+  it('one set for the song itself wins over everything (QoL 4)', () => {
+    const withSong = [...items, m('song', { type: 'song', trackId: 'spotify:1', title: 'Sumo' })]
+    expect(
+      mediaFor(withSong, track(['Hi-C'], 'Munnie Fetish Renegade Demon')).map((x) => x.id)
+    ).toEqual(['song'])
+  })
+
   it('an album picture for another artist does not count', () => {
     expect(
       mediaFor(items, track(['DOMD'], 'Munnie Fetish Renegade Demon')).map((x) => x.id)

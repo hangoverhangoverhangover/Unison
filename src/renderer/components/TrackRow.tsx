@@ -21,6 +21,7 @@ import { useLibrary } from '@renderer/state/library'
 import { SERVICE_NAME } from '@renderer/lib/services'
 import EqBars from './EqBars'
 import { useTitleFix } from '@renderer/state/titleFix'
+import BackgroundMenu from './BackgroundMenu'
 
 export const ROW_HEIGHT = 56
 export const ROW_GRID =
@@ -169,6 +170,7 @@ export default function TrackRow({
               Fix artist and title…
             </MenuItem>
           )}
+          <BackgroundMenu track={track} />
           {track.provider === 'local' && (
             <>
               <ContextMenu.Separator className="my-1 h-px bg-divider" />

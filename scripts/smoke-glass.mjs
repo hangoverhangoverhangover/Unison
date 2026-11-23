@@ -653,6 +653,39 @@ try {
     await shot('artwork-lyrics-search-again')
   }
 
+  if (want('playermenu')) {
+    // Right-click the Player page: add a picture for this very song.
+    await go('Local Files')
+    await win.getByRole('radio', { name: 'Unsorted' }).click()
+    await win.getByText('Glasshouse').first().dblclick()
+    await win.waitForTimeout(800)
+    await win.getByRole('button', { name: 'Player', exact: true }).first().click()
+    await win.waitForTimeout(800)
+    await app.evaluate(
+      ({ dialog }, f) => {
+        dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [f] })
+      },
+      join(userData, '02.png')
+    )
+    await win.locator('main').click({ button: 'right', position: { x: 600, y: 300 } })
+    await shot('artwork-player-menu')
+    await win.getByRole('menuitem', { name: /This song/ }).click()
+    await win.waitForTimeout(1200)
+    console.log('player bg:', await win.locator('main img').first().getAttribute('src'))
+    await shot('artwork-player-song-bg')
+    // The same from a song row.
+    await go('Local Files')
+    await win
+      .getByRole('listitem')
+      .filter({ hasText: 'Night Shift' })
+      .first()
+      .click({ button: 'right' })
+    await win.getByRole('menuitem', { name: 'Add Player background' }).hover()
+    await win.waitForTimeout(400)
+    await shot('artwork-row-bg-menu')
+    await win.keyboard.press('Escape')
+  }
+
   if (want('theme')) {
     // Custom theme: pick it, change colours, glass and font, use a picture, then save
     // the theme to a file and load it back.

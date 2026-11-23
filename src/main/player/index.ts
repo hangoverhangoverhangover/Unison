@@ -26,12 +26,18 @@ export function validateScope(raw: unknown): PlayerMediaScope {
   const s = raw as Record<string, unknown> | null
   const name = typeof s?.name === 'string' ? s.name.trim().slice(0, 200) : ''
   if (s?.type === 'all') return { type: 'all' }
+  if (s?.type === 'song' && typeof s.trackId === 'string' && /^[a-z]+:.{1,200}$/.test(s.trackId))
+    return {
+      type: 'song',
+      trackId: s.trackId,
+      title: name || (typeof s.title === 'string' ? s.title.trim().slice(0, 200) : '') || 'Song'
+    }
   if (s?.type === 'artist' && name) return { type: 'artist', name }
   if (s?.type === 'album' && name) {
     const artist = typeof s.artist === 'string' ? s.artist.trim().slice(0, 200) : ''
     return artist ? { type: 'album', name, artist } : { type: 'album', name }
   }
-  throw new Error('Choose every song, an artist, or an album.')
+  throw new Error('Choose every song, a song, an artist, or an album.')
 }
 
 export function registerPlayerMedia(opts: {

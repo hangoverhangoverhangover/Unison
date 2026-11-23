@@ -1,7 +1,8 @@
-import { ExternalLink, Maximize, Minimize } from 'lucide-react'
+import * as ContextMenu from '@radix-ui/react-context-menu'
+import { ExternalLink, ImagePlus, Maximize, Minimize } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type { LastfmArtist } from '@shared/lastfm'
-import { mediaFor, pickFor, playerMediaUrl, type PlayerMedia } from '@shared/player'
+import { mediaFor, pickFor, playerMediaUrl, scopesFor, type PlayerMedia } from '@shared/player'
 import type { Artist, Track } from '@shared/types'
 import { playback } from '@renderer/playback/controller'
 import { readSpectrum, SPECTRUM_BINS } from '@renderer/playback/audioGraph'
@@ -257,50 +258,82 @@ export default function PlayerView(): React.JSX.Element {
   const track = usePlayback((s) => s.current?.track ?? null)
   const parts = usePlayerPage((s) => s.parts)
   const full = useFullscreen()
+  const add = usePlayerPage((s) => s.add)
+  const setView = useUi((s) => s.setView)
 
   return (
-    <div className="relative isolate flex h-full flex-col overflow-hidden">
-      <Background track={track} />
-      <button
-        onClick={() =>
-          void (document.fullscreenElement
-            ? document.exitFullscreen()
-            : document.documentElement.requestFullscreen())
-        }
-        aria-label={full ? 'Leave full screen' : 'Full screen'}
-        title={full ? 'Leave full screen (Esc)' : 'Full screen'}
-        className="absolute top-4 right-4 z-10 rounded-full bg-black/40 p-2 text-white/80 hover:text-white"
-      >
-        {full ? <Minimize size={16} /> : <Maximize size={16} />}
-      </button>
-      {!track ? (
-        <p className="m-auto text-white/80">Play something to fill this page.</p>
-      ) : (
-        <>
-          <div className="flex min-h-0 flex-1 gap-6 px-8 pt-8">
-            <div className="flex min-w-0 flex-1 flex-col justify-between pb-6">
-              {parts.artist ? <ArtistPanel track={track} /> : <span />}
-              <div className="flex items-end gap-4">
-                <div className="size-[clamp(140px,22vh,260px)] flex-none overflow-hidden rounded-lg shadow-2xl">
-                  <Artwork src={track.artworkUrl} size={260} className="size-full" />
+    // Right-click anywhere: add a picture, GIF or video for this song, artist, album
+    // or every song.
+    <ContextMenu.Root>
+      <ContextMenu.Trigger asChild>
+        <div className="relative isolate flex h-full flex-col overflow-hidden">
+          <Background track={track} />
+          <button
+            onClick={() =>
+              void (document.fullscreenElement
+                ? document.exitFullscreen()
+                : document.documentElement.requestFullscreen())
+            }
+            aria-label={full ? 'Leave full screen' : 'Full screen'}
+            title={full ? 'Leave full screen (Esc)' : 'Full screen'}
+            className="absolute top-4 right-4 z-10 rounded-full bg-black/40 p-2 text-white/80 hover:text-white"
+          >
+            {full ? <Minimize size={16} /> : <Maximize size={16} />}
+          </button>
+          {!track ? (
+            <p className="m-auto text-white/80">Play something to fill this page.</p>
+          ) : (
+            <>
+              <div className="flex min-h-0 flex-1 gap-6 px-8 pt-8">
+                <div className="flex min-w-0 flex-1 flex-col justify-between pb-6">
+                  {parts.artist ? <ArtistPanel track={track} /> : <span />}
+                  <div className="flex items-end gap-4">
+                    <div className="size-[clamp(140px,22vh,260px)] flex-none overflow-hidden rounded-lg shadow-2xl">
+                      <Artwork src={track.artworkUrl} size={260} className="size-full" />
+                    </div>
+                    <div className="min-w-0 pb-1 text-white">
+                      <p className="truncate text-xl font-black">{track.title}</p>
+                      <p className="truncate text-white/75">{track.artists.join(', ')}</p>
+                    </div>
+                  </div>
                 </div>
-                <div className="min-w-0 pb-1 text-white">
-                  <p className="truncate text-xl font-black">{track.title}</p>
-                  <p className="truncate text-white/75">{track.artists.join(', ')}</p>
-                </div>
+                {parts.lyrics && <LyricsColumn />}
+                {parts.queue && <QueueStrip />}
               </div>
-            </div>
-            {parts.lyrics && <LyricsColumn />}
-            {parts.queue && <QueueStrip />}
-          </div>
-          {parts.visualizer && (
-            <div className="px-8 pb-[calc(var(--play-bar-height)+var(--play-bar-inset)+8px)]">
-              <Visualizer />
-            </div>
+              {parts.visualizer && (
+                <div className="px-8 pb-[calc(var(--play-bar-height)+var(--play-bar-inset)+8px)]">
+                  <Visualizer />
+                </div>
+              )}
+              {!parts.visualizer && <div className="pb-page" />}
+            </>
           )}
-          {!parts.visualizer && <div className="pb-page" />}
-        </>
-      )}
-    </div>
+        </div>
+      </ContextMenu.Trigger>
+      <ContextMenu.Portal>
+        <ContextMenu.Content className="glass-strong z-50 min-w-56 max-w-80 rounded-xl p-1 text-md">
+          <ContextMenu.Label className="px-3 pt-1.5 pb-1 text-xs text-text-muted">
+            Add a picture, GIF or video for
+          </ContextMenu.Label>
+          {scopesFor(track).map((s) => (
+            <ContextMenu.Item
+              key={s.label}
+              onSelect={() => void add(s.scope)}
+              className="flex items-center gap-2 rounded-md px-3 py-2 outline-none data-[highlighted]:bg-raised-hover"
+            >
+              <ImagePlus size={14} className="flex-none" />
+              <span className="truncate">{s.label}</span>
+            </ContextMenu.Item>
+          ))}
+          <ContextMenu.Separator className="my-1 h-px bg-divider" />
+          <ContextMenu.Item
+            onSelect={() => setView('settings')}
+            className="rounded-md px-3 py-2 outline-none data-[highlighted]:bg-raised-hover"
+          >
+            Manage backgrounds…
+          </ContextMenu.Item>
+        </ContextMenu.Content>
+      </ContextMenu.Portal>
+    </ContextMenu.Root>
   )
 }

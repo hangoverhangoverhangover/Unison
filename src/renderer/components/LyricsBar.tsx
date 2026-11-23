@@ -14,8 +14,10 @@ export default function LyricsBar(): React.JSX.Element | null {
   const barOn = useLyrics((s) => s.barOn)
   const view = useUi((s) => s.view)
   const setView = useUi((s) => s.setView)
-  const { line } = useLyricPosition(barOn && view !== 'lyrics' ? lines : null)
-  if (!lines || !barOn || view === 'lyrics' || line < 0) return null
+  // Off on the lyrics and Player pages: both already show the lyrics.
+  const hidden = view === 'lyrics' || view === 'player'
+  const { line } = useLyricPosition(barOn && !hidden ? lines : null)
+  if (!lines || !barOn || hidden || line < 0) return null
   const now = lines[line]
   const next = lines[line + 1]
   // No such line (lyrics just changed), or an empty last line marking where the

@@ -9,6 +9,7 @@ const ghost =
 
 function scopeLabel(s: PlayerMediaScope): string {
   if (s.type === 'all') return 'Every song'
+  if (s.type === 'song') return `Song: ${s.title}`
   if (s.type === 'artist') return `Artist: ${s.name}`
   return `Album: ${s.name}${s.artist ? ` (${s.artist})` : ''}`
 }
@@ -61,6 +62,7 @@ function MediaRow({ m }: { m: PlayerMedia }): React.JSX.Element {
         title="Artist and album use the song that's playing"
       >
         <option value="all">Every song</option>
+        {m.scope.type === 'song' && <option value="song">{m.scope.title}</option>}
         <option value="artist" disabled={!artist && m.scope.type !== 'artist'}>
           {m.scope.type === 'artist' ? m.scope.name : artist ? `Artist: ${artist}` : 'Artist'}
         </option>
