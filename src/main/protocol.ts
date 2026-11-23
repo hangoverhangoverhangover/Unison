@@ -24,6 +24,16 @@ export function registerMediaSchemePrivileges(): void {
   ])
 }
 
+export type MediaHostHandler = (req: Request, id: string) => Promise<Response>
+/** Extra media:// hosts served by other modules (e.g. `media://discography/<id>`). */
+const hosts = new Map<string, MediaHostHandler>()
+
+/** Serve `media://<host>/<id>` with `handler`, or stop serving it (null). */
+export function setMediaHost(host: string, handler: MediaHostHandler | null): void {
+  if (handler) hosts.set(host, handler)
+  else hosts.delete(host)
+}
+
 /** Serves `media://local/<nativeId>` and `media://art/<hash>`. Call after app ready. */
 export function registerMediaProtocol(db: Db, userDataDir: string): void {
   const handler = createMediaHandler({
@@ -31,7 +41,21 @@ export function registerMediaProtocol(db: Db, userDataDir: string): void {
     artworkDir: join(userDataDir, 'artwork'),
     playerDir: join(userDataDir, 'player-media')
   })
-  protocol.handle(MEDIA_SCHEME, async (req) => withCors(await handler(req)))
+  protocol.handle(MEDIA_SCHEME, async (req) => {
+    const url = new URL(req.url)
+    const extra = hosts.get(url.hostname)
+    if (extra) {
+      let id: string
+      try {
+        id = decodeURIComponent(url.pathname.replace(/^\/+/, '').replace(/\/+$/, ''))
+      } catch {
+        return new Response(null, { status: 404 })
+      }
+      if (!id || id.length > 200 || id.includes('/')) return new Response(null, { status: 404 })
+      return withCors(await extra(req, id))
+    }
+    return withCors(await handler(req))
+  })
 }
 
 /**

@@ -35,7 +35,7 @@ const RANGE_DAYS: Record<StatsRange, number | null> = {
   all: null
 }
 
-const PROVIDERS = new Set<unknown>(['spotify', 'soundcloud', 'local'])
+const PROVIDERS = new Set<unknown>(['spotify', 'soundcloud', 'discography', 'local'])
 
 /** Checks the track that came over IPC (same fields as the router's check, plus the id shape). */
 export function isPlayableTrack(t: unknown): t is Track {

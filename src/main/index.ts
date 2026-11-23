@@ -16,6 +16,7 @@ import { emit, handle } from './ipc'
 import { registerPlaylists } from './playlists'
 import { registerMediaProtocol, registerMediaSchemePrivileges } from './protocol'
 import { registerSoundCloud } from './soundcloud'
+import { registerDiscography } from './discography'
 import { registerSpotify } from './spotify'
 import { describeClientId, effectiveClientId, writeClientId } from './spotify/clientId'
 import { createMainWindow, overlayColors } from './window'
@@ -124,6 +125,12 @@ app.whenReady().then(async () => {
   const library = registerLibrary({ db, userDataDir: userData, getWebContents })
   const spotify = registerSpotify({ db, keys, getWebContents })
   const soundcloud = registerSoundCloud({
+    db,
+    getWebContents,
+    getParentWindow: () => mainWindow ?? undefined
+  })
+  // discography.stream: search and playback (media://discography/<id>).
+  const discography = registerDiscography({
     db,
     getWebContents,
     getParentWindow: () => mainWindow ?? undefined
@@ -312,6 +319,7 @@ app.whenReady().then(async () => {
     () => library.dispose(),
     () => spotify.dispose(),
     () => soundcloud.dispose(),
+    () => discography.dispose(),
     () => likes.dispose(),
     () => playlists.dispose(),
     () => discord.dispose(),

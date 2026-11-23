@@ -95,7 +95,7 @@ export interface MusicRouter {
   findOn(track: Track, service: ServiceProvider): Promise<FindResult>
 }
 
-const PROVIDERS = new Set<unknown>(['spotify', 'soundcloud', 'local'])
+const PROVIDERS = new Set<unknown>(['spotify', 'soundcloud', 'discography', 'local'])
 
 /** The fields findOn reads, checked because the track comes over IPC. */
 function isTrackLike(t: unknown): t is Track {

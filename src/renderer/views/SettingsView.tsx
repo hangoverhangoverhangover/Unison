@@ -12,6 +12,7 @@ import SoundSection from '@renderer/components/SoundSection'
 import AppearanceSection from '@renderer/components/AppearanceSection'
 import LastfmSection from '@renderer/components/LastfmSection'
 import GeniusSection from '@renderer/components/GeniusSection'
+import DiscographySection from '@renderer/components/DiscographySection'
 import UpdatesSection from '@renderer/components/UpdatesSection'
 import PlayerMediaSection from '@renderer/components/PlayerMediaSection'
 import { useElementWidth } from '@renderer/lib/useElementWidth'
@@ -203,6 +204,7 @@ export default function SettingsView(): React.JSX.Element {
               <ServiceSection provider="spotify" />
               <ServiceSection provider="soundcloud" />
               <SoundCloudTokenForm />
+              <DiscographySection />
               <LastfmSection />
               <GeniusSection />
             </Group>

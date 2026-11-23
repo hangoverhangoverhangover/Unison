@@ -31,6 +31,7 @@ const KINDS: { kind: Kind; label: string }[] = [
 const SOURCE_LABEL: Record<SearchSource, string> = {
   spotify: 'Spotify',
   soundcloud: 'SoundCloud',
+  discography: 'Discography',
   local: 'Local'
 }
 /** Cards per row on the All view (one tidy row each). */

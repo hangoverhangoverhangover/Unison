@@ -678,6 +678,35 @@ try {
     await win.evaluate(() => window.api.invoke('mini:toggle'))
   }
 
+  if (want('discography')) {
+    // Logged out (throwaway profile): the Settings card, the search chip, and the login
+    // window loading the real site. Nobody logs in here.
+    await win.getByRole('button', { name: 'Settings', exact: true }).click()
+    const card = win.locator('section', { hasText: 'discography.stream account' }).first()
+    await card.scrollIntoViewIfNeeded()
+    console.log('discography card:', (await card.locator('p').first().textContent())?.trim())
+    await card.screenshot({ path: `${out}/artwork-discography-card.png` })
+    const opened = app.waitForEvent('window', { timeout: 15000 }).catch(() => null)
+    await card.getByRole('button', { name: 'Connect' }).click()
+    const login = await opened
+    if (login) {
+      await login.waitForLoadState('domcontentloaded').catch(() => undefined)
+      await login.waitForTimeout(4000)
+      console.log('discography login window:', login.url(), await login.title())
+      await login
+        .screenshot({ path: `${out}/artwork-discography-login.png` })
+        .catch(() => undefined)
+      await login.close()
+    } else console.log('discography login window: none opened')
+    await win.waitForTimeout(800)
+    await go('Search')
+    await win.waitForTimeout(500)
+    console.log(
+      'search sources:',
+      await win.getByRole('group', { name: 'Sources' }).getByRole('checkbox').allTextContents()
+    )
+  }
+
   if (want('applog')) {
     // The app log: startup line, a renderer error, a fake secret that must not be written.
     await win.evaluate(() => console.error('smoke renderer error token=abc123'))

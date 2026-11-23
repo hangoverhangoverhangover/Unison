@@ -18,6 +18,7 @@ export const MAX_IMAGE_KEY = 256
 const PROVIDER_LABEL: Record<Provider, string> = {
   spotify: 'Spotify',
   soundcloud: 'SoundCloud',
+  discography: 'Discography',
   local: 'Local file'
 }
 

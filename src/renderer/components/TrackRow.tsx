@@ -163,7 +163,9 @@ export default function TrackRow({
               Remove from this playlist
             </MenuItem>
           )}
-          {track.provider !== 'local' && <LikeMenuItem track={track} />}
+          {(track.provider === 'spotify' || track.provider === 'soundcloud') && (
+            <LikeMenuItem track={track} />
+          )}
           {track.provider === 'soundcloud' && <DownloadMenuItem track={track} />}
           {track.provider === 'soundcloud' && (
             <MenuItem onSelect={() => useTitleFix.getState().open(track)}>
@@ -228,7 +230,8 @@ function AddToPlaylistMenu({ track }: { track: Track }): React.JSX.Element {
   const createWith = usePlaylists((s) => s.create)
   const addTracks = usePlaylists((s) => s.addTracks)
   const setView = useUi((s) => s.setView)
-  const service = track.provider === 'local' ? null : track.provider
+  const service =
+    track.provider === 'local' || track.provider === 'discography' ? null : track.provider
   const useStore = serviceStore(service ?? 'spotify')
   // Select the stable list, then filter: a selector returning a new array each time
   // makes zustand re-render forever.

@@ -1,7 +1,7 @@
 // Shared domain types. Owned by the main agent: subagents code against these
 // and report back if they need a change instead of editing them.
 
-export type Provider = 'spotify' | 'soundcloud' | 'local'
+export type Provider = 'spotify' | 'soundcloud' | 'discography' | 'local'
 
 /** Every track, whatever its source, becomes this shape. */
 export interface Track {

@@ -14,7 +14,12 @@ export const MAX_GROUPS = 500
 export const KEY_MAX_LENGTH = 20_000
 export const KEY_SEPARATOR = '|'
 
-const PROVIDER_ORDER: Record<Track['provider'], number> = { spotify: 0, soundcloud: 1, local: 2 }
+const PROVIDER_ORDER: Record<Track['provider'], number> = {
+  spotify: 0,
+  soundcloud: 1,
+  discography: 2,
+  local: 3
+}
 
 /**
  * Songs in `adding` that `existing` already has: the same track, or the same song

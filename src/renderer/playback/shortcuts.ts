@@ -8,7 +8,7 @@ import { stepZoom } from '@shared/layout'
 import type { PlaybackController } from './controller'
 
 function toggleLike(track: Track | undefined): void {
-  if (!track || track.provider === 'local') return
+  if (!track || (track.provider !== 'spotify' && track.provider !== 'soundcloud')) return
   const store = serviceStore(track.provider === 'soundcloud' ? 'soundcloud' : 'spotify').getState()
   void store.setLiked(track, !(store.liked[track.id] ?? false)).catch(() => undefined)
 }

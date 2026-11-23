@@ -9,7 +9,7 @@ export const APP_PREFIX = 'app:'
 export const NAME_MAX = 100
 export const OWNER_NAME = 'You'
 
-const PROVIDERS = new Set<Provider>(['spotify', 'soundcloud', 'local'])
+const PROVIDERS = new Set<Provider>(['spotify', 'soundcloud', 'discography', 'local'])
 
 export interface AddResult {
   /** Entries appended. */

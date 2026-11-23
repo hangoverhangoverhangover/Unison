@@ -19,6 +19,7 @@
 
 import type { Api } from '@shared/ipc'
 import { localAudioUrl } from '@shared/library'
+import { discographyStreamUrl } from '@shared/discography'
 import { DEFAULT_AUDIO, type AudioSettings } from '@shared/playback'
 import type { StreamInfo } from '@shared/provider'
 import { isPlayable, type Track } from '@shared/types'
@@ -568,7 +569,15 @@ export function createAudioBackend(
     return r.done
   }
 
-  const canPlay = (t: Track): boolean => t.provider === 'local' || t.provider === 'soundcloud'
+  const canPlay = (t: Track): boolean =>
+    t.provider === 'local' || t.provider === 'soundcloud' || t.provider === 'discography'
+  /** Local files and Discography MP3s play straight from the app's media:// protocol. */
+  const directUrl = (t: Track): string | null =>
+    t.provider === 'local'
+      ? localAudioUrl(t.nativeId)
+      : t.provider === 'discography'
+        ? discographyStreamUrl(t.nativeId)
+        : null
 
   // ---- Crossfade ----
 
@@ -640,8 +649,9 @@ export function createAudioBackend(
     void (async () => {
       try {
         let target: Target
-        if (next.provider === 'local') {
-          target = { kind: 'file', url: localAudioUrl(next.nativeId) }
+        const direct = directUrl(next)
+        if (direct) {
+          target = { kind: 'file', url: direct }
         } else {
           const s = await fetchStream(next)
           if (xfade !== x) return
@@ -826,8 +836,9 @@ export function createAudioBackend(
             }
           )
         }
-        if (t.provider === 'local') {
-          settle(openGraphOrPlain({ kind: 'file', url: localAudioUrl(t.nativeId) }, null))
+        const direct = directUrl(t)
+        if (direct) {
+          settle(openGraphOrPlain({ kind: 'file', url: direct }, null))
           return
         }
         settle(

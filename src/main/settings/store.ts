@@ -34,7 +34,7 @@ export const SESSION_MAX_QUEUE = 2000
 export const CROSSFADE_MAX_MS = 12_000
 export const EQ_GAIN_MAX_DB = 12
 
-const PROVIDERS = new Set<unknown>(['spotify', 'soundcloud', 'local'])
+const PROVIDERS = new Set<unknown>(['spotify', 'soundcloud', 'discography', 'local'])
 const REPEAT = new Set<unknown>(['off', 'all', 'one'])
 
 function readJson(db: Db, key: string): unknown {

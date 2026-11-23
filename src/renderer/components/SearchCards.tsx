@@ -17,8 +17,19 @@ export function SourceDot({
   className?: string
 }): React.JSX.Element {
   const color =
-    provider === 'spotify' ? 'bg-spotify' : provider === 'soundcloud' ? 'bg-soundcloud' : 'bg-local'
-  const name = provider === 'local' ? 'Local file' : SERVICE_NAME[provider]
+    provider === 'spotify'
+      ? 'bg-spotify'
+      : provider === 'soundcloud'
+        ? 'bg-soundcloud'
+        : provider === 'discography'
+          ? 'bg-discography'
+          : 'bg-local'
+  const name =
+    provider === 'local'
+      ? 'Local file'
+      : provider === 'discography'
+        ? 'Discography'
+        : SERVICE_NAME[provider]
   return (
     <span
       role="img"

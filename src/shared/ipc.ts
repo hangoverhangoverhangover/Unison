@@ -28,6 +28,7 @@ import type {
 } from './transfer'
 import type { AudioSettings, MediaKey, NowPlaying, SessionSnapshot } from './playback'
 import type { FeedPage, ScTrackPage, SoundCloudStatus } from './soundcloud'
+import type { DiscographyStatus } from './discography'
 import type { SpotifyClientIdSetting, SpotifyStatus } from './spotify'
 import type { StreamInfo, TrackComment } from './provider'
 import type {
@@ -42,7 +43,11 @@ import type {
 } from './types'
 
 /** Providers reached through a MusicProvider in main (local files go through library:*). */
-export type ServiceProvider = Exclude<Provider, 'local'>
+/**
+ * Services with a library behind music:* calls (likes, playlists, transfers). Discography
+ * only searches and plays for now (discography:* channels).
+ */
+export type ServiceProvider = Exclude<Provider, 'local' | 'discography'>
 
 /**
  * Typed IPC contract. Every renderer -> main call is listed here; the preload
@@ -299,6 +304,13 @@ export interface IpcInvokeMap {
   /** Start these tracks on the SDK device (transfers playback to it first if needed). */
   'spotify:play': (deviceId: string, nativeIds: string[], positionMs: number) => void
 
+  'discography:getStatus': () => DiscographyStatus
+  /** Opens a discography.stream login window; resolves when logged in or it closes. */
+  'discography:login': () => DiscographyStatus
+  'discography:logout': () => DiscographyStatus
+  /** Songs matching `query` (page 0, 1, …; 30 a page). */
+  'discography:search': (query: string, page: number) => Track[]
+
   'soundcloud:getStatus': () => SoundCloudStatus
   /** Opens a soundcloud.com login window; resolves when logged in or the window closes. */
   'soundcloud:login': () => SoundCloudStatus
@@ -362,6 +374,7 @@ export interface IpcEventMap {
   'discord:status': DiscordStatus
   'spotify:status': SpotifyStatus
   'soundcloud:status': SoundCloudStatus
+  'discography:status': DiscographyStatus
   'downloads:status': DownloaderStatus
   /** Jam connection or room changed. */
   'jam:status': JamStatus
@@ -528,6 +541,10 @@ const invokeChannels = {
   'spotify:logout': true,
   'spotify:getAccessToken': true,
   'spotify:play': true,
+  'discography:getStatus': true,
+  'discography:login': true,
+  'discography:logout': true,
+  'discography:search': true,
   'soundcloud:getStatus': true,
   'soundcloud:login': true,
   'soundcloud:logout': true,
@@ -557,6 +574,7 @@ const eventChannels = {
   'discord:status': true,
   'spotify:status': true,
   'soundcloud:status': true,
+  'discography:status': true,
   'downloads:status': true,
   'media:key': true,
   'jam:status': true,

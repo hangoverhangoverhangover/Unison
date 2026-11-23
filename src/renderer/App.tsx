@@ -9,6 +9,7 @@ import { bindTray } from './playback/trayBridge'
 import { playback } from './playback/controller'
 import { bindLibraryEvents } from './state/library'
 import { bindServiceEvents } from './state/services'
+import { bindDiscography } from './state/discography'
 import { useUi } from './state/ui'
 import { bindAppearance, useAppearance } from './state/appearance'
 import { clampRightPanelWidth, clampSidebarWidth, SIDEBAR } from '@shared/layout'
@@ -81,6 +82,7 @@ export default function App(): React.JSX.Element {
   useEffect(() => bindAppearance(), [])
   useEffect(() => bindLibraryEvents(), [])
   useEffect(() => bindServiceEvents(), [])
+  useEffect(() => bindDiscography(), [])
   useEffect(() => startJam(playback), [])
   useEffect(() => bindLikesEvents(), [])
   useEffect(() => bindPlaylistEvents(), [])
