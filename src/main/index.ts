@@ -29,8 +29,10 @@ import { registerTheme } from './theme'
 import { registerUpdates } from './updates'
 import { registerTitles } from './titles'
 import { createThumbar } from './thumbar'
+import { createRelayArt } from './discord/relayArt'
+import { smallCover } from './discord/smallCover'
 import { registerPlayerMedia } from './player'
-import { registerSettings } from './settings'
+import { readAppPrefs, registerSettings } from './settings'
 import { registerTray } from './tray'
 import { registerTransfer } from './transfer'
 import { registerTags } from './tags'
@@ -88,6 +90,7 @@ app.whenReady().then(async () => {
   // Build/config ID before the Settings override; the override is applied once the db is open.
   const buildSpotifyClientId = keys.spotifyClientId
   db = openDb(join(userData, 'library.db'))
+  const openedDb = db
   keys.spotifyClientId = effectiveClientId(db, buildSpotifyClientId)
   const getWebContents = (): Electron.WebContents | undefined =>
     mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : undefined
@@ -160,7 +163,15 @@ app.whenReady().then(async () => {
           spotify.provider && spotify.isConnected() ? spotify.provider.search(q, 0) : []
       },
       { name: 'SoundCloud', search: (q) => soundcloud.provider.search(q, 0) }
-    ]
+    ],
+    // QoL 4: a local file's own cover, shrunk and put up on the relay for a while.
+    relayArt: createRelayArt({
+      fetch: (url, init) => fetch(url, init),
+      baseUrl: () => readAppPrefs(openedDb).jamRelayUrl || keys.jamRelayUrl || null,
+      enabled: () => readAppPrefs(openedDb).discordLocalArt,
+      readCover: (hash) => smallCover(join(userData, 'artwork'), hash),
+      log: (message, err) => (err === undefined ? console.log(message) : console.warn(message, err))
+    })
   })
   const downloads = registerDownloads({
     db,

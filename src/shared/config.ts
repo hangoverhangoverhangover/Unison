@@ -57,6 +57,8 @@ export interface AppPrefs {
   autoDownloadLikes: boolean
   /** Tidy SoundCloud archive titles ("Artist - Title" uploads); QoL 4. */
   tidyScTitles: boolean
+  /** Local files' own covers on Discord, through Unison's relay (QoL 4). */
+  discordLocalArt: boolean
   /** Jam relay base URL (https://…). Empty = use the built-in relay. */
   jamRelayUrl: string
   /** Name shown to others in a Jam. */
@@ -80,6 +82,7 @@ export const DEFAULT_APP_PREFS: AppPrefs = {
   closeToTray: true,
   autoDownloadLikes: false,
   tidyScTitles: true,
+  discordLocalArt: true,
   jamRelayUrl: '',
   jamName: '',
   jamUnplayable: 'match',

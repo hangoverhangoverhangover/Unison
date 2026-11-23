@@ -6,6 +6,7 @@ import { emit, handle } from '../ipc'
 import { createRpcClient } from './client'
 import { createCoverArtLookup, type ArtFallback, type CoverArtLookup } from './coverArt'
 import { withLocalArt } from './localArt'
+import type { RelayArt } from './relayArt'
 import { createPresence, type Presence, type RpcClientFactory } from './presence'
 import { readEnabled, writeEnabled } from './settings'
 
@@ -25,6 +26,8 @@ export interface DiscordOptions {
   coverArt?: CoverArtLookup
   /** Service searches tried when MusicBrainz has no cover (Spotify, SoundCloud). */
   artFallbacks?: ArtFallback[]
+  /** Local files' own covers through the relay (QoL 4). */
+  relayArt?: RelayArt
 }
 
 export function registerDiscord(opts: DiscordOptions): {
@@ -48,7 +51,7 @@ export function registerDiscord(opts: DiscordOptions): {
       fallbacks: opts.artFallbacks ?? [],
       log: (message, err) => (err === undefined ? console.log(message) : console.warn(message, err))
     })
-  const send = withLocalArt(coverArt, (update) => presence.update(update))
+  const send = withLocalArt(coverArt, (update) => presence.update(update), opts.relayArt)
 
   handle('discord:update', (update) => send(update))
   handle('discord:getStatus', () => presence.getStatus())

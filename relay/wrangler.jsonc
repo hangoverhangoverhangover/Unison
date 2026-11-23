@@ -8,11 +8,16 @@
   "workers_dev": true,
   "observability": { "enabled": false },
   "durable_objects": {
-    "bindings": [{ "name": "JAM_ROOM", "class_name": "JamRoom" }]
+    "bindings": [
+      { "name": "JAM_ROOM", "class_name": "JamRoom" },
+      // Discord cover art for local files (QoL 4): one object per image, short-lived.
+      { "name": "ART_STORE", "class_name": "ArtStore" }
+    ]
   },
   // Declarative Durable Object config (replaces the legacy "migrations" array).
   // SQLite storage is the only backend on the Workers Free plan.
   "exports": {
-    "JamRoom": { "type": "durable-object", "storage": "sqlite" }
+    "JamRoom": { "type": "durable-object", "storage": "sqlite" },
+    "ArtStore": { "type": "durable-object", "storage": "sqlite" }
   }
 }

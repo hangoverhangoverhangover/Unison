@@ -94,6 +94,17 @@ export function BehaviourSection(): React.JSX.Element {
         />
       </Row>
       <DiscordRow />
+      <Row
+        title="Local cover art on Discord"
+        body="Shows your files’ own covers on Discord. A small copy passes through Unison’s relay and is deleted when the song changes."
+      >
+        <Switch
+          label="Local cover art on Discord"
+          checked={!!prefs?.discordLocalArt}
+          disabled={!prefs}
+          onChange={(v) => void set({ discordLocalArt: v })}
+        />
+      </Row>
       {error && <p className="text-sm text-danger">{error}</p>}
     </section>
   )
