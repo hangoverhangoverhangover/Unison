@@ -5,7 +5,7 @@
 <h1 align="center">Unison</h1>
 
 <p align="center">
-  <strong>Spotify, SoundCloud and your own music files in one window.</strong><br>
+  <strong>Spotify, SoundCloud, Discography and your own music files in one window.</strong><br>
   One queue that mixes all three, one Liked Songs list, one search, wrapped in frosted glass that takes its colour from whatever is playing.
 </p>
 
@@ -19,7 +19,7 @@
 
 ### Play everything together
 
-- **Spotify** (Premium), **SoundCloud** and **local files** (MP3, FLAC, M4A and more) in one queue. Skip from a Spotify song to a SoundCloud track to a file on your disk without thinking about it.
+- **Spotify** (Premium), **SoundCloud**, **Discography** ([discography.stream](https://discography.stream)) and **local files** (MP3, FLAC, M4A and more) in one queue. Skip from a Spotify song to a SoundCloud track to a file on your disk without thinking about it.
 - **Gapless Spotify playback**, and SoundCloud's protected (DRM) tracks play too.
 - **Media keys**, a **mini player** that stays on top, and **close to tray** so the music keeps going.
 - **Picks up where you left off:** your queue, track and position come back when you reopen the app.
@@ -47,13 +47,24 @@
 - **Feed** of uploads and reposts from people you follow; follow and unfollow artists.
 - **Downloader:** saves the official file when there is one, otherwise the stream, with tags and artwork. Downloads land in your local library, linked to the SoundCloud track. Optionally download new likes automatically.
 
+### Player page
+
+- **A full-window view of what's playing:** the artist's bio from Last.fm, the cover, the whole lyrics with the current line lit, and what's up next (point at it to see titles). Full screen hides everything but the play bar.
+- **Your own backgrounds:** pictures, GIFs or videos for a song, an artist, an album or every song (right-click the page). When more than one fits, they can **swap** after a set time or a set number of plays.
+- **Visualizer:** bars, mirrored bars, wave, a ring around the cover, a circular waveform, particles, a spectrogram, or a **shader** that bends the cover (liquid, kaleidoscope, warp). Put it at the bottom, around the cover, behind the whole page or behind the lyrics, and stack up to three styles.
+  - Peak caps, gradients from the cover's colours, trails, glow, smoothing and a musical frequency scale.
+  - **Beat detection:** the cover bumps, the background flashes and the bars kick on each beat; the background can also breathe with the bass.
+  - **Presets** (Chill, Club, Retro, Minimal, Dreamy, Dreamy + bars, Galaxy) and your own saved looks.
+  - **Edit it live:** right-click the Player page → Edit visualizer… opens the settings in a panel over the page.
+  - **Spotify songs:** Spotify's audio can't be read, so an opt-in setting lets the visualizer listen to your PC's sound instead.
+
 ### Listen together
 
 - **Jam:** start a session, share the code, and everyone adds to one queue. Each person plays on their own accounts, and playback stays in sync across Spotify and SoundCloud.
 
 ### Lyrics and scrobbling
 
-- **Synced lyrics** from LRCLIB: a full lyrics page that follows the song (click a line to jump there), the current line above the play bar and in the mini player.
+- **Synced lyrics** from LRCLIB, with Genius as a backup (add a Genius token): a full lyrics page that follows the song (click a line to jump there), the current line above the play bar and in the mini player.
 - **Your own lyrics:** paste them and tap along as the song plays to time each line, and each word if you like. They stay on your computer.
 - **Last.fm scrobbling** with your own Last.fm API account (Settings → Accounts → Last.fm). Works offline: scrobbles wait and send later.
 
@@ -209,6 +220,10 @@ No API key needed: the app uses your normal SoundCloud login.
 SoundCloud search and playback also work without logging in; likes, playlists, the feed, comments and downloads of Go+ tracks need the login.
 
 ---
+
+## Setting up Discography
+
+Settings → Accounts → Discography → **Connect** opens discography.stream's own login (Discord or Google). Once you're in, Discography songs show up in Search next to the others. Liking, its playlists and downloads aren't supported.
 
 ## Optional extras
 
