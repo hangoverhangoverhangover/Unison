@@ -760,10 +760,13 @@ try {
     }
     // Round cover and the ring clear of the title and the play bar.
     const box = (sel) =>
-      win.locator(sel).first().evaluate((e) => {
-        const r = e.getBoundingClientRect()
-        return { left: r.left, right: r.right, top: r.top, bottom: r.bottom }
-      })
+      win
+        .locator(sel)
+        .first()
+        .evaluate((e) => {
+          const r = e.getBoundingClientRect()
+          return { left: r.left, right: r.right, top: r.top, bottom: r.bottom }
+        })
     card = await settings()
     await card.getByRole('button', { name: 'Club', exact: true }).click()
     await win.getByRole('button', { name: 'Player', exact: true }).first().click()
