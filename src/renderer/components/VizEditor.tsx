@@ -2,7 +2,7 @@
 // "Edit visualizer…"), so every change shows live behind it. Drag it by its header;
 // Esc or the cross closes it. The same controls are in Settings → Player.
 import { GripHorizontal, X } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef } from 'react'
 import { usePlayerPage } from '@renderer/state/playerPage'
 import { VisualizerSettings } from './PlayerMediaSection'
 import Switch from './Switch'
@@ -13,9 +13,23 @@ export default function VizEditor({ onClose }: { onClose: () => void }): React.J
   const visible = usePlayerPage((s) => s.parts.visualizer)
   const setPart = usePlayerPage((s) => s.setPart)
   const panel = useRef<HTMLDivElement>(null)
-  // Offset from the top-right corner where it opens.
-  const [pos, setPos] = useState({ x: 0, y: 0 })
+  // Offset from the top-right corner where it opens. Kept in a ref and written straight
+  // to the element while dragging: re-rendering on every move made the sliding option
+  // highlights (layout animations) chase the panel.
+  const pos = useRef({ x: 0, y: 0 })
+  const place = (el: HTMLElement): void => {
+    const { x, y } = pos.current
+    el.style.top = `${MARGIN + y}px`
+    el.style.right = `${MARGIN - x}px`
+    // Always ends above the play bar, wherever it's dragged.
+    el.style.maxHeight = `calc(100% - ${MARGIN * 2 + y}px - var(--play-bar-height) - var(--play-bar-inset))`
+  }
   const drag = useRef<{ x: number; y: number; px: number; py: number } | null>(null)
+
+  // React re-renders (any setting change) would put the opening style back: re-apply.
+  useLayoutEffect(() => {
+    if (panel.current) place(panel.current)
+  })
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
@@ -27,7 +41,9 @@ export default function VizEditor({ onClose }: { onClose: () => void }): React.J
 
   const onPointerDown = (e: React.PointerEvent): void => {
     if ((e.target as HTMLElement).closest('button')) return
-    drag.current = { x: e.clientX, y: e.clientY, px: pos.x, py: pos.y }
+    // No text selection while dragging.
+    e.preventDefault()
+    drag.current = { x: e.clientX, y: e.clientY, px: pos.current.x, py: pos.current.y }
     ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
   }
   const onPointerMove = (e: React.PointerEvent): void => {
@@ -39,7 +55,8 @@ export default function VizEditor({ onClose }: { onClose: () => void }): React.J
     const maxLeft = box.width - el.offsetWidth - MARGIN * 2
     const x = Math.min(0, Math.max(-maxLeft, d.px + e.clientX - d.x))
     const y = Math.max(0, Math.min(box.height - 240, d.py + e.clientY - d.y))
-    setPos({ x, y })
+    pos.current = { x, y }
+    place(el)
   }
   const onPointerUp = (): void => {
     drag.current = null
@@ -54,10 +71,9 @@ export default function VizEditor({ onClose }: { onClose: () => void }): React.J
       onContextMenu={(e) => e.stopPropagation()}
       className="glass-strong absolute z-20 flex w-[min(380px,calc(100%-24px))] flex-col overflow-hidden rounded-xl text-text shadow-2xl"
       style={{
-        top: MARGIN + pos.y,
-        right: MARGIN - pos.x,
-        // Always ends above the play bar, wherever it's dragged.
-        maxHeight: `calc(100% - ${MARGIN * 2 + pos.y}px - var(--play-bar-height) - var(--play-bar-inset))`
+        top: MARGIN,
+        right: MARGIN,
+        maxHeight: `calc(100% - ${MARGIN * 2}px - var(--play-bar-height) - var(--play-bar-inset))`
       }}
     >
       <div

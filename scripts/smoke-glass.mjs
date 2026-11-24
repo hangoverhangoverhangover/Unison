@@ -800,6 +800,14 @@ try {
     await win.mouse.move(b.x + 60, b.y + 15)
     await win.mouse.down()
     await win.mouse.move(b.x - 400, b.y + 120, { steps: 8 })
+    // Mid-drag, the selected option's highlight must sit on its button, not trail behind.
+    const drift = await panel.getByRole('radio', { name: 'Ring', exact: true }).evaluate((btn) => {
+      const pill = btn.querySelector('span[aria-hidden]')
+      const a = btn.getBoundingClientRect()
+      const p = pill?.getBoundingClientRect()
+      return p ? Math.round(Math.abs(a.left - p.left) + Math.abs(a.top - p.top)) : null
+    })
+    console.log('editor highlight drift mid-drag (px):', drift)
     await win.mouse.up()
     const after = await panel.boundingBox()
     console.log(
