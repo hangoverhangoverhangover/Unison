@@ -256,7 +256,7 @@ function Presets(): React.JSX.Element {
 }
 
 /** Everything about the Player page's visualizer and its beat and bass effects. */
-function VisualizerSettings(): React.JSX.Element {
+export function VisualizerSettings({ inPanel = false }: { inPanel?: boolean }): React.JSX.Element {
   const viz = usePlayerPage((s) => s.viz)
   const setViz = usePlayerPage((s) => s.setViz)
   const L = VIZ_LIMITS
@@ -267,8 +267,8 @@ function VisualizerSettings(): React.JSX.Element {
   const setExtra = (i: number, patch: Partial<VizLayer>): void =>
     setViz({ extraLayers: viz.extraLayers.map((l, j) => (j === i ? { ...l, ...patch } : l)) })
   return (
-    <div className="mt-5 flex flex-col gap-4">
-      <p className="text-sm font-semibold text-text-subdued">Visualizer</p>
+    <div className={`flex flex-col gap-4 ${inPanel ? '' : 'mt-5'}`}>
+      {!inPanel && <p className="text-sm font-semibold text-text-subdued">Visualizer</p>}
       <Presets />
       <Choice
         label="Style"

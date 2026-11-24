@@ -1,5 +1,5 @@
 import * as ContextMenu from '@radix-ui/react-context-menu'
-import { ExternalLink, ImagePlus, Maximize, Minimize } from 'lucide-react'
+import { AudioWaveform, ExternalLink, ImagePlus, Maximize, Minimize } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { LastfmArtist } from '@shared/lastfm'
 import { gifDurationMs } from '@shared/gif'
@@ -19,6 +19,7 @@ import { useLyricPosition } from '@renderer/lib/useLyricPosition'
 import { useFullscreen } from '@renderer/lib/useFullscreen'
 import { blur } from '@renderer/styles/tokens'
 import Artwork from '@renderer/components/Artwork'
+import VizEditor from '@renderer/components/VizEditor'
 import { useVizLoop } from '@renderer/viz/loop'
 import VizCanvas from '@renderer/viz/VizCanvas'
 
@@ -366,6 +367,7 @@ export default function PlayerView(): React.JSX.Element {
   const full = useFullscreen()
   const add = usePlayerPage((s) => s.add)
   const setView = useUi((s) => s.setView)
+  const [editing, setEditing] = useState(false)
 
   return (
     // Right-click anywhere: add a picture, GIF or video for this song, artist, album
@@ -394,6 +396,7 @@ export default function PlayerView(): React.JSX.Element {
           >
             {full ? <Minimize size={16} /> : <Maximize size={16} />}
           </button>
+          {editing && <VizEditor onClose={() => setEditing(false)} />}
           {!track ? (
             <p className="m-auto text-white/80">Play something to fill this page.</p>
           ) : (
@@ -492,6 +495,13 @@ export default function PlayerView(): React.JSX.Element {
             </ContextMenu.Item>
           ))}
           <ContextMenu.Separator className="my-1 h-px bg-divider" />
+          <ContextMenu.Item
+            onSelect={() => setEditing(true)}
+            className="flex items-center gap-2 rounded-md px-3 py-2 outline-none data-[highlighted]:bg-raised-hover"
+          >
+            <AudioWaveform size={14} className="flex-none" />
+            Edit visualizer…
+          </ContextMenu.Item>
           <ContextMenu.Item
             onSelect={() => setView('settings')}
             className="rounded-md px-3 py-2 outline-none data-[highlighted]:bg-raised-hover"

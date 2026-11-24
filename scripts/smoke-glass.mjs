@@ -778,6 +778,44 @@ try {
     console.log('viz errors:', errors.length ? errors : 'none')
   }
 
+  if (want('vizeditor')) {
+    // Right-click the Player page → Edit visualizer…: a panel over the page, live.
+    await go('Local Files')
+    await win.getByRole('radio', { name: 'Unsorted' }).click()
+    await win.getByText('Glasshouse').first().dblclick()
+    await win.waitForTimeout(800)
+    await win.getByRole('button', { name: 'Player', exact: true }).first().click()
+    await win.waitForTimeout(800)
+    await win.locator('main').click({ button: 'right', position: { x: 500, y: 300 } })
+    await win.getByRole('menuitem', { name: 'Edit visualizer…' }).click()
+    const panel = win.getByRole('dialog', { name: 'Edit visualizer' })
+    await panel.waitFor()
+    await panel.getByRole('radio', { name: 'Ring', exact: true }).click()
+    await panel.getByRole('radio', { name: 'Around the cover', exact: true }).click()
+    await win.waitForTimeout(1500)
+    console.log('editor: cover canvases', await win.locator('main .rounded-full').count())
+    await shot('viz-editor')
+    const head = panel.locator('div').first()
+    const b = await head.boundingBox()
+    await win.mouse.move(b.x + 60, b.y + 15)
+    await win.mouse.down()
+    await win.mouse.move(b.x - 400, b.y + 120, { steps: 8 })
+    await win.mouse.up()
+    const after = await panel.boundingBox()
+    console.log(
+      'editor dragged from',
+      Math.round(b.x),
+      Math.round(b.y),
+      'to',
+      Math.round(after.x),
+      Math.round(after.y)
+    )
+    await shot('viz-editor-moved')
+    await win.keyboard.press('Escape')
+    await win.waitForTimeout(300)
+    console.log('editor closed:', (await panel.count()) === 0)
+  }
+
   if (want('discography')) {
     // Logged out (throwaway profile): the Settings card, the search chip, and the login
     // window loading the real site. Nobody logs in here.
