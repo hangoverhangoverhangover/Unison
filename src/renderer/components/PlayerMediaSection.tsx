@@ -1,12 +1,16 @@
-import { Film, ImagePlus, Trash2 } from 'lucide-react'
+import { Film, ImagePlus, Trash2, X } from 'lucide-react'
+import { useState } from 'react'
 import { playerMediaUrl, type PlayerMedia, type PlayerMediaScope } from '@shared/player'
 import { usePlayback } from '@renderer/state/player'
 import {
   usePlayerPage,
+  BUILTIN_PRESETS,
   SWAP_LIMITS,
   VIZ_LIMITS,
   type PlayerParts,
+  type ShaderPreset,
   type VizColor,
+  type VizPlacement,
   type VizStyle
 } from '@renderer/state/playerPage'
 import ActivePill from './ActivePill'
@@ -132,21 +136,132 @@ function Choice<T extends string>({
 const STYLES: { id: VizStyle; label: string }[] = [
   { id: 'bars', label: 'Bars' },
   { id: 'mirror', label: 'Mirrored' },
-  { id: 'wave', label: 'Wave' }
+  { id: 'wave', label: 'Wave' },
+  { id: 'radial', label: 'Ring' },
+  { id: 'circle', label: 'Circular wave' },
+  { id: 'particles', label: 'Particles' },
+  { id: 'spectrogram', label: 'Spectrogram' },
+  { id: 'shader', label: 'Shader' }
+]
+const PLACEMENTS: { id: VizPlacement; label: string }[] = [
+  { id: 'bottom', label: 'Bottom' },
+  { id: 'cover', label: 'Around the cover' },
+  { id: 'background', label: 'Full background' },
+  { id: 'lyrics', label: 'Behind the lyrics' }
 ]
 const COLORS: { id: VizColor; label: string }[] = [
   { id: 'accent', label: 'Match theme' },
   { id: 'white', label: 'White' },
-  { id: 'custom', label: 'Your colour' }
+  { id: 'custom', label: 'Your colours' }
+]
+const SHADERS: { id: ShaderPreset; label: string }[] = [
+  { id: 'liquid', label: 'Liquid' },
+  { id: 'kaleidoscope', label: 'Kaleidoscope' },
+  { id: 'warp', label: 'Warp' }
+]
+const FPS: { id: '30' | '60'; label: string }[] = [
+  { id: '60', label: '60 fps' },
+  { id: '30', label: '30 fps (lighter)' }
 ]
 
-/** Level bar look: style, count, height, sensitivity, colour, opacity. */
+const pct = (v: number): string => `${Math.round(v * 100)}%`
+
+/** A setting that's on or off, with a line saying what it does. */
+function Toggle({
+  label,
+  hint,
+  checked,
+  onChange
+}: {
+  label: string
+  hint?: string
+  checked: boolean
+  onChange: (on: boolean) => void
+}): React.JSX.Element {
+  return (
+    <label className="flex items-start justify-between gap-4 rounded-lg bg-raised px-3 py-2 text-sm">
+      <span>
+        <span className="block font-semibold">{label}</span>
+        {hint && <span className="block text-xs text-text-muted">{hint}</span>}
+      </span>
+      <Switch label={label} checked={checked} onChange={onChange} />
+    </label>
+  )
+}
+
+function Heading({ children }: { children: React.ReactNode }): React.JSX.Element {
+  return <p className="mt-2 text-sm font-semibold text-text-subdued">{children}</p>
+}
+
+/** Ready-made looks and your own saved ones. */
+function Presets(): React.JSX.Element {
+  const presets = usePlayerPage((s) => s.presets)
+  const choose = usePlayerPage((s) => s.choosePreset)
+  const save = usePlayerPage((s) => s.savePreset)
+  const remove = usePlayerPage((s) => s.deletePreset)
+  const [name, setName] = useState('')
+  return (
+    <div>
+      <p className="text-sm font-semibold text-text-subdued">Presets</p>
+      <div className="mt-1.5 flex flex-wrap gap-1.5">
+        {BUILTIN_PRESETS.map((p) => (
+          <button key={p.name} onClick={() => choose(p)} className={pill(false)}>
+            {p.name}
+          </button>
+        ))}
+        {presets.map((p) => (
+          <span key={p.name} className="flex items-center rounded-full bg-raised">
+            <button
+              onClick={() => choose(p)}
+              className="rounded-l-full py-1.5 pr-1 pl-3 text-sm font-semibold text-text-subdued hover:text-text"
+            >
+              {p.name}
+            </button>
+            <button
+              onClick={() => remove(p.name)}
+              aria-label={`Delete preset ${p.name}`}
+              title="Delete"
+              className="rounded-r-full py-1.5 pr-2.5 pl-1 text-text-muted hover:text-text"
+            >
+              <X size={12} />
+            </button>
+          </span>
+        ))}
+      </div>
+      <form
+        className="mt-2 flex gap-2"
+        onSubmit={(e) => {
+          e.preventDefault()
+          save(name)
+          setName('')
+        }}
+      >
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          maxLength={40}
+          placeholder="Name this look to save it"
+          aria-label="Preset name"
+          className="min-w-0 flex-1 rounded-lg bg-raised px-3 py-1.5 text-sm text-text outline-none ring-1 ring-divider placeholder:text-text-muted focus:ring-2 focus:ring-accent"
+        />
+        <button type="submit" disabled={!name.trim()} className={ghost}>
+          Save preset
+        </button>
+      </form>
+    </div>
+  )
+}
+
+/** Everything about the Player page's visualizer and its beat and bass effects. */
 function VisualizerSettings(): React.JSX.Element {
   const viz = usePlayerPage((s) => s.viz)
   const setViz = usePlayerPage((s) => s.setViz)
+  const L = VIZ_LIMITS
+  const barStyle = viz.style === 'bars' || viz.style === 'mirror' || viz.style === 'radial'
   return (
     <div className="mt-5 flex flex-col gap-4">
-      <p className="text-sm font-semibold text-text-subdued">Level bars</p>
+      <p className="text-sm font-semibold text-text-subdued">Visualizer</p>
+      <Presets />
       <Choice
         label="Style"
         id="viz-style"
@@ -154,30 +269,43 @@ function VisualizerSettings(): React.JSX.Element {
         options={STYLES}
         onChange={(style) => setViz({ style })}
       />
+      <Choice
+        label="Where"
+        id="viz-place"
+        value={viz.placement}
+        options={PLACEMENTS}
+        onChange={(placement) => setViz({ placement })}
+      />
+
+      <Heading>Size and feel</Heading>
       <div className="grid grid-cols-2 gap-x-6 gap-y-4">
-        <RangeField
-          label={viz.style === 'wave' ? 'Points' : 'Bars'}
-          value={viz.bars}
-          min={VIZ_LIMITS.bars[0]}
-          max={VIZ_LIMITS.bars[1]}
-          step={4}
-          format={(v) => String(v)}
-          onChange={(bars) => setViz({ bars })}
-        />
-        <RangeField
-          label="Height"
-          value={viz.height}
-          min={VIZ_LIMITS.height[0]}
-          max={VIZ_LIMITS.height[1]}
-          step={4}
-          format={(v) => `${v} px`}
-          onChange={(height) => setViz({ height })}
-        />
+        {viz.style !== 'shader' && viz.style !== 'spectrogram' && viz.style !== 'particles' && (
+          <RangeField
+            label={viz.style === 'wave' ? 'Points' : viz.style === 'radial' ? 'Spokes' : 'Bars'}
+            value={viz.bars}
+            min={L.bars[0]}
+            max={L.bars[1]}
+            step={4}
+            format={(v) => String(v)}
+            onChange={(bars) => setViz({ bars })}
+          />
+        )}
+        {viz.placement === 'bottom' && (
+          <RangeField
+            label="Height"
+            value={viz.height}
+            min={L.height[0]}
+            max={L.height[1]}
+            step={4}
+            format={(v) => `${v} px`}
+            onChange={(height) => setViz({ height })}
+          />
+        )}
         <RangeField
           label="Sensitivity"
           value={viz.sensitivity}
-          min={VIZ_LIMITS.sensitivity[0]}
-          max={VIZ_LIMITS.sensitivity[1]}
+          min={L.sensitivity[0]}
+          max={L.sensitivity[1]}
           step={0.1}
           format={(v) => `${v.toFixed(1)}×`}
           onChange={(sensitivity) => setViz({ sensitivity })}
@@ -185,13 +313,140 @@ function VisualizerSettings(): React.JSX.Element {
         <RangeField
           label="Opacity"
           value={viz.opacity}
-          min={VIZ_LIMITS.opacity[0]}
-          max={VIZ_LIMITS.opacity[1]}
+          min={L.opacity[0]}
+          max={L.opacity[1]}
           step={0.05}
-          format={(v) => `${Math.round(v * 100)}%`}
+          format={pct}
           onChange={(opacity) => setViz({ opacity })}
         />
+        <RangeField
+          label="Smoothing"
+          value={viz.smoothing}
+          min={L.smoothing[0]}
+          max={L.smoothing[1]}
+          step={0.05}
+          format={(v) => (v < 0.4 ? `Snappy (${pct(v)})` : v > 0.8 ? `Fluid (${pct(v)})` : pct(v))}
+          onChange={(smoothing) => setViz({ smoothing })}
+        />
+        <RangeField
+          label="Trails"
+          value={viz.trails}
+          min={L.trails[0]}
+          max={L.trails[1]}
+          step={0.05}
+          format={(v) => (v === 0 ? 'Off' : pct(v))}
+          onChange={(trails) => setViz({ trails })}
+        />
+        <RangeField
+          label="Glow"
+          value={viz.glow}
+          min={L.glow[0]}
+          max={L.glow[1]}
+          step={0.05}
+          format={(v) => (v === 0 ? 'Off' : pct(v))}
+          onChange={(glow) => setViz({ glow })}
+        />
       </div>
+      <Choice
+        label="Frame rate"
+        id="viz-fps"
+        value={String(viz.fps) as '30' | '60'}
+        options={FPS}
+        onChange={(v) => setViz({ fps: v === '30' ? 30 : 60 })}
+      />
+      <Toggle
+        label="Musical frequency scale"
+        hint="Spread the bars over octaves, so bass and mids get more of them. Off: even over Hz (the right side is mostly treble)."
+        checked={viz.logScale}
+        onChange={(logScale) => setViz({ logScale })}
+      />
+      {(barStyle || viz.style === 'wave') && (
+        <>
+          <Toggle
+            label="Peak caps"
+            hint="A small cap sits on each bar's peak and falls slowly, like a hi-fi meter."
+            checked={viz.peaks}
+            onChange={(peaks) => setViz({ peaks })}
+          />
+          {viz.peaks && (
+            <RangeField
+              label="Caps fall"
+              value={viz.peakFall}
+              min={L.peakFall[0]}
+              max={L.peakFall[1]}
+              step={0.1}
+              format={(v) => (v < 0.6 ? 'Slowly' : v > 1.8 ? 'Fast' : 'Medium')}
+              onChange={(peakFall) => setViz({ peakFall })}
+            />
+          )}
+        </>
+      )}
+
+      {viz.style === 'particles' && (
+        <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+          <RangeField
+            label="Particles"
+            value={viz.particleCount}
+            min={L.particleCount[0]}
+            max={L.particleCount[1]}
+            step={10}
+            format={(v) => String(v)}
+            onChange={(particleCount) => setViz({ particleCount })}
+          />
+          <RangeField
+            label="Speed"
+            value={viz.particleSpeed}
+            min={L.particleSpeed[0]}
+            max={L.particleSpeed[1]}
+            step={0.25}
+            format={(v) => `${v.toFixed(2)}×`}
+            onChange={(particleSpeed) => setViz({ particleSpeed })}
+          />
+        </div>
+      )}
+      {viz.style === 'spectrogram' && (
+        <RangeField
+          label="Scroll speed"
+          value={viz.spectrogramSpeed}
+          min={L.spectrogramSpeed[0]}
+          max={L.spectrogramSpeed[1]}
+          step={1}
+          format={(v) => `${v} px a frame`}
+          onChange={(spectrogramSpeed) => setViz({ spectrogramSpeed })}
+        />
+      )}
+      {viz.style === 'circle' && (
+        <RangeField
+          label="Rings"
+          value={viz.circleRings}
+          min={L.circleRings[0]}
+          max={L.circleRings[1]}
+          step={1}
+          format={(v) => String(v)}
+          onChange={(circleRings) => setViz({ circleRings })}
+        />
+      )}
+      {viz.style === 'shader' && (
+        <>
+          <Choice
+            label="Effect"
+            id="viz-shader"
+            value={viz.shaderPreset}
+            options={SHADERS}
+            onChange={(shaderPreset) => setViz({ shaderPreset })}
+          />
+          <RangeField
+            label="Intensity"
+            value={viz.shaderIntensity}
+            min={L.shaderIntensity[0]}
+            max={L.shaderIntensity[1]}
+            step={0.05}
+            format={(v) => (v < 0.3 ? `Calm (${pct(v)})` : v > 0.7 ? `Wild (${pct(v)})` : pct(v))}
+            onChange={(shaderIntensity) => setViz({ shaderIntensity })}
+          />
+        </>
+      )}
+
       <Choice
         label="Colour"
         id="viz-color"
@@ -199,30 +454,98 @@ function VisualizerSettings(): React.JSX.Element {
         options={COLORS}
         onChange={(color) => setViz({ color })}
       />
+      <Toggle
+        label="Gradient"
+        hint={
+          viz.color === 'custom'
+            ? 'Fade from your first colour to your second.'
+            : 'Fade between two colours: the cover’s two main colours in the artwork theme, else the accent and a neighbour of it.'
+        }
+        checked={viz.gradient}
+        onChange={(gradient) => setViz({ gradient })}
+      />
       {viz.color === 'custom' && (
-        <div className="flex">
+        <div className="flex flex-wrap gap-2">
           <ColorField
-            label="Bar colour"
+            label="Colour"
             value={viz.customColor}
             onChange={(customColor) => setViz({ customColor })}
           />
+          {viz.gradient && (
+            <ColorField
+              label="Second colour"
+              value={viz.customColor2}
+              onChange={(customColor2) => setViz({ customColor2 })}
+            />
+          )}
         </div>
       )}
-      <label className="flex items-start justify-between gap-4 rounded-lg bg-raised px-3 py-2 text-sm">
-        <span>
-          <span className="block font-semibold">Bars for Spotify songs</span>
-          <span className="block text-xs text-text-muted">
-            Spotify&apos;s audio can&apos;t be read, so the bars listen to your PC&apos;s sound
-            instead, only while the Player page shows a Spotify song. Other sounds (Discord, videos)
-            move them too.
-          </span>
-        </span>
-        <Switch
-          label="Bars for Spotify songs"
-          checked={viz.systemSound}
-          onChange={(systemSound) => setViz({ systemSound })}
+
+      <Heading>Beat and bass</Heading>
+      <Toggle
+        label="Beat detection"
+        hint="Find the kicks in the bass. The effects below follow them."
+        checked={viz.beat}
+        onChange={(beat) => setViz({ beat })}
+      />
+      {viz.beat && (
+        <>
+          <RangeField
+            label="Beat sensitivity"
+            value={viz.beatSensitivity}
+            min={L.beatSensitivity[0]}
+            max={L.beatSensitivity[1]}
+            step={0.1}
+            format={(v) =>
+              v < 0.8 ? 'Big kicks only' : v > 1.5 ? 'Every small one' : `${v.toFixed(1)}×`
+            }
+            onChange={(beatSensitivity) => setViz({ beatSensitivity })}
+          />
+          <Toggle
+            label="Cover bumps"
+            hint="The cover grows a little on each beat."
+            checked={viz.beatCover}
+            onChange={(beatCover) => setViz({ beatCover })}
+          />
+          <Toggle
+            label="Background flash"
+            hint="The background flashes and zooms a little on each beat."
+            checked={viz.beatFlash}
+            onChange={(beatFlash) => setViz({ beatFlash })}
+          />
+          <Toggle
+            label="Bars kick"
+            hint="The visualizer jumps up on each beat."
+            checked={viz.beatKick}
+            onChange={(beatKick) => setViz({ beatKick })}
+          />
+        </>
+      )}
+      <Toggle
+        label="Background breathes with the bass"
+        hint="Your picture or the blurred cover swells and brightens with the low end."
+        checked={viz.bassBackground}
+        onChange={(bassBackground) => setViz({ bassBackground })}
+      />
+      {viz.bassBackground && (
+        <RangeField
+          label="How much"
+          value={viz.bassAmount}
+          min={L.bassAmount[0]}
+          max={L.bassAmount[1]}
+          step={0.05}
+          format={pct}
+          onChange={(bassAmount) => setViz({ bassAmount })}
         />
-      </label>
+      )}
+
+      <Heading>Spotify</Heading>
+      <Toggle
+        label="Visualizer for Spotify songs"
+        hint="Spotify's audio can't be read, so the visualizer listens to your PC's sound instead, only while the Player page shows a Spotify song. Other sounds (Discord, videos) move it too."
+        checked={viz.systemSound}
+        onChange={(systemSound) => setViz({ systemSound })}
+      />
     </div>
   )
 }
@@ -275,7 +598,7 @@ const PARTS: { key: keyof PlayerParts; label: string }[] = [
   { key: 'artist', label: 'Artist info' },
   { key: 'lyrics', label: 'Lyrics' },
   { key: 'queue', label: 'Up next' },
-  { key: 'visualizer', label: 'Level bars' }
+  { key: 'visualizer', label: 'Visualizer' }
 ]
 
 /** Settings → Player: backgrounds (every song, an artist, an album) and page parts. */

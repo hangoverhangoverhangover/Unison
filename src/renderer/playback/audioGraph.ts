@@ -155,18 +155,40 @@ export interface AudioGraph {
   dispose(): void
 }
 
-let readSpectrumFrom: ((out: Uint8Array<ArrayBuffer>) => boolean) | null = null
+let spectrumNode: AnalyserNode | null = null
+let spectrumRate = 48000
 
 /**
  * Frequency levels (0-255) of what plays through the graph: local files and
  * SoundCloud. False when there's no graph yet (or Spotify, which can't be read).
  */
 export function readSpectrum(out: Uint8Array<ArrayBuffer>): boolean {
-  return readSpectrumFrom ? readSpectrumFrom(out) : false
+  if (!spectrumNode) return false
+  spectrumNode.getByteFrequencyData(out)
+  return true
 }
 
-/** Bins readSpectrum fills (fftSize / 2). */
-export const SPECTRUM_BINS = 128
+/** The waveform (128 = silence) of the same audio; false when there's no graph yet. */
+export function readWaveform(out: Uint8Array<ArrayBuffer>): boolean {
+  if (!spectrumNode) return false
+  spectrumNode.getByteTimeDomainData(out)
+  return true
+}
+
+/** Smoothing between frames, 0 (snappy) to 0.95 (fluid). */
+export function setSpectrumSmoothing(v: number): void {
+  if (spectrumNode) spectrumNode.smoothingTimeConstant = Math.min(0.95, Math.max(0, v))
+}
+
+/** Sample rate of the graph, for turning bins into Hz. */
+export function spectrumSampleRate(): number {
+  return spectrumRate
+}
+
+/** Bins readSpectrum fills (fftSize / 2): about 47 Hz each at 48 kHz. */
+export const SPECTRUM_BINS = 512
+/** Samples readWaveform fills (fftSize). */
+export const WAVE_SAMPLES = SPECTRUM_BINS * 2
 
 export function createAudioGraph(ctx: AudioContextLike): AudioGraph {
   const mix = ctx.createGain()
@@ -194,13 +216,11 @@ export function createAudioGraph(ctx: AudioContextLike): AudioGraph {
   mix.connect(analyser)
   // A small second analyser for the Player page's level bars (QoL 4).
   const spectrum = ctx.createAnalyser()
-  spectrum.fftSize = 256
+  spectrum.fftSize = WAVE_SAMPLES
   spectrum.smoothingTimeConstant = 0.8
   mix.connect(spectrum)
-  readSpectrumFrom = (out) => {
-    spectrum.getByteFrequencyData(out)
-    return true
-  }
+  spectrumNode = spectrum as AnalyserNode
+  spectrumRate = (ctx as { sampleRate?: number }).sampleRate || 48000
   level.connect(eq[0] as BiquadFilterNode)
   for (let i = 0; i < eq.length - 1; i++) {
     ;(eq[i] as BiquadFilterNode).connect(eq[i + 1] as BiquadFilterNode)

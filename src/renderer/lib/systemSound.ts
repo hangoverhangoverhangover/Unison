@@ -2,13 +2,14 @@
 // the app can't read directly. Started while something needs it, stopped when nothing
 // does, so Windows only shows the capture while the Player page is showing a Spotify
 // song with the setting on.
-import { SPECTRUM_BINS } from '@renderer/playback/audioGraph'
+import { SPECTRUM_BINS, WAVE_SAMPLES } from '@renderer/playback/audioGraph'
 
 let users = 0
 let starting: Promise<boolean> | null = null
 let stream: MediaStream | null = null
 let ctx: AudioContext | null = null
 let analyser: AnalyserNode | null = null
+let smoothing = 0.8
 
 async function open(): Promise<boolean> {
   try {
@@ -25,8 +26,8 @@ async function open(): Promise<boolean> {
     }
     const c = new AudioContext()
     const a = c.createAnalyser()
-    a.fftSize = SPECTRUM_BINS * 2
-    a.smoothingTimeConstant = 0.8
+    a.fftSize = WAVE_SAMPLES
+    a.smoothingTimeConstant = smoothing
     // Into the analyser only: never to the speakers (that would echo).
     c.createMediaStreamSource(s).connect(a)
     stream = s
@@ -68,3 +69,22 @@ export function readSystemSpectrum(out: Uint8Array<ArrayBuffer>): boolean {
   analyser.getByteFrequencyData(out)
   return true
 }
+
+/** Fill `out` (WAVE_SAMPLES bytes, 128 = silence) with the system sound's waveform. */
+export function readSystemWaveform(out: Uint8Array<ArrayBuffer>): boolean {
+  if (!analyser) return false
+  analyser.getByteTimeDomainData(out)
+  return true
+}
+
+export function setSystemSmoothing(v: number): void {
+  smoothing = Math.min(0.95, Math.max(0, v))
+  if (analyser) analyser.smoothingTimeConstant = smoothing
+}
+
+export function systemSampleRate(): number {
+  return ctx?.sampleRate ?? 48000
+}
+
+/** Bins readSystemSpectrum fills. */
+export { SPECTRUM_BINS }

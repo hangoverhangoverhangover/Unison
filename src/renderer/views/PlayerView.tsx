@@ -6,18 +6,16 @@ import { gifDurationMs } from '@shared/gif'
 import { mediaFor, pickFor, playerMediaUrl, scopesFor, type PlayerMedia } from '@shared/player'
 import type { Artist, Track } from '@shared/types'
 import { playback } from '@renderer/playback/controller'
-import { readSpectrum, SPECTRUM_BINS } from '@renderer/playback/audioGraph'
 import { usePlayback } from '@renderer/state/player'
 import { useLyrics } from '@renderer/state/lyrics'
-import { usePlayerPage, type VizSettings } from '@renderer/state/playerPage'
+import { usePlayerPage } from '@renderer/state/playerPage'
 import { useUi } from '@renderer/state/ui'
 import { useLyricPosition } from '@renderer/lib/useLyricPosition'
 import { useFullscreen } from '@renderer/lib/useFullscreen'
-import { artColor } from '@renderer/lib/artColor'
-import { readSystemSpectrum, startSystemSound, stopSystemSound } from '@renderer/lib/systemSound'
-import { useAppearance } from '@renderer/state/appearance'
 import { blur } from '@renderer/styles/tokens'
 import Artwork from '@renderer/components/Artwork'
+import { useVizLoop } from '@renderer/viz/loop'
+import VizCanvas from '@renderer/viz/VizCanvas'
 
 const gifLengths = new Map<string, Promise<number | null>>()
 /** One play of a GIF background, in ms (null: unreadable). Cached per file. */
@@ -38,7 +36,14 @@ function gifLength(m: PlayerMedia): Promise<number | null> {
  * on and more than one that fits, it moves on: pictures after a set time, videos and
  * GIFs after playing a set number of times. Otherwise one stays (videos loop).
  */
-function Background({ track }: { track: Track | null }): React.JSX.Element {
+function Background({
+  track,
+  overlay
+}: {
+  track: Track | null
+  /** Drawn over the picture, under the shade (the visualizer in "Full background"). */
+  overlay?: React.ReactNode
+}): React.JSX.Element {
   const media = usePlayerPage((s) => s.media)
   const swap = usePlayerPage((s) => s.swap)
   const matches = useMemo(() => mediaFor(media, track), [media, track])
@@ -103,37 +108,50 @@ function Background({ track }: { track: Track | null }): React.JSX.Element {
   const fade = 'animate-[bg-fade-in_700ms_ease-out] motion-reduce:animate-none'
   return (
     <div aria-hidden className="absolute inset-0 -z-10 overflow-hidden bg-base">
-      {pick?.kind === 'video' ? (
-        <video
-          ref={videoRef}
-          key={shown}
-          src={playerMediaUrl(pick)}
-          autoPlay
-          loop={!swapping}
-          onEnded={swapping ? onVideoEnded : undefined}
-          muted
-          playsInline
-          className={`size-full object-cover motion-reduce:hidden ${fade}`}
-        />
-      ) : pick ? (
-        <img
-          key={shown}
-          src={playerMediaUrl(pick)}
-          alt=""
-          className={`size-full object-cover ${fade}`}
-        />
-      ) : (
-        track?.artworkUrl && (
-          <img
-            src={track.artworkUrl}
-            alt=""
-            className="size-full scale-125 object-cover"
-            style={{ filter: `blur(${blur.ambient}px) saturate(1.3)` }}
+      <div
+        className="absolute inset-0 will-change-transform"
+        style={{
+          transform: 'scale(calc(1 + var(--viz-bass, 0) * 0.08 + var(--viz-flash, 0) * 0.025))'
+        }}
+      >
+        {pick?.kind === 'video' ? (
+          <video
+            ref={videoRef}
+            key={shown}
+            src={playerMediaUrl(pick)}
+            autoPlay
+            loop={!swapping}
+            onEnded={swapping ? onVideoEnded : undefined}
+            muted
+            playsInline
+            className={`size-full object-cover motion-reduce:hidden ${fade}`}
           />
-        )
-      )}
+        ) : pick ? (
+          <img
+            key={shown}
+            src={playerMediaUrl(pick)}
+            alt=""
+            className={`size-full object-cover ${fade}`}
+          />
+        ) : (
+          track?.artworkUrl && (
+            <img
+              src={track.artworkUrl}
+              alt=""
+              className="size-full scale-125 object-cover"
+              style={{ filter: `blur(${blur.ambient}px) saturate(1.3)` }}
+            />
+          )
+        )}
+      </div>
+      {overlay}
       {/* Shade so the words stay readable on any picture. */}
       <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/25 to-black/70" />
+      {/* Beat flash and bass glow (0 unless turned on in Settings → Player). */}
+      <div
+        className="absolute inset-0 bg-white"
+        style={{ opacity: 'calc(var(--viz-flash, 0) * 0.1 + var(--viz-bass, 0) * 0.06)' }}
+      />
     </div>
   )
 }
@@ -308,129 +326,20 @@ function QueueStrip(): React.JSX.Element | null {
 }
 
 /**
- * The bar colour: the theme's (the cover's main colour in the artwork theme, else the
- * accent), white, or your own.
- */
-function vizColor(viz: VizSettings, art: string | null): string {
-  if (viz.color === 'white') return '#ffffff'
-  if (viz.color === 'custom') return viz.customColor
-  if (art) return art
-  const accent = getComputedStyle(document.documentElement).getPropertyValue('--color-accent')
-  return accent.trim() || '#7289da'
-}
-
-/**
- * Level bars from the audio (local files and SoundCloud; Spotify can't be read).
- * Style, count, height, sensitivity, colour and opacity come from Settings → Player.
- */
-function Visualizer(): React.JSX.Element {
-  const ref = useRef<HTMLCanvasElement>(null)
-  const viz = usePlayerPage((s) => s.viz)
-  // The draw loop reads the latest settings without restarting.
-  const vizRef = useRef(viz)
-  useEffect(() => {
-    vizRef.current = viz
-  }, [viz])
-  // Artwork theme: the bars take the cover's colour.
-  const artTheme = useAppearance((s) => s.theme === 'artwork')
-  const cover = usePlayback((s) => s.current?.track.artworkUrl)
-  // Spotify songs: the PC's own sound, when that's turned on (Spotify's can't be read).
-  const spotify = usePlayback((s) => s.current?.track.provider === 'spotify')
-  const useSystem = spotify && viz.systemSound
-  const systemRef = useRef(false)
-  useEffect(() => {
-    systemRef.current = useSystem
-    if (!useSystem) return
-    void startSystemSound()
-    return () => stopSystemSound()
-  }, [useSystem])
-  const artRef = useRef<string | null>(null)
-  useEffect(() => {
-    artRef.current = null
-    if (!artTheme) return
-    let live = true
-    void artColor(cover).then((c) => {
-      if (live) artRef.current = c
-    })
-    return () => {
-      live = false
-    }
-  }, [artTheme, cover])
-  useEffect(() => {
-    const canvas = ref.current
-    if (!canvas) return
-    const data = new Uint8Array(SPECTRUM_BINS)
-    let raf = 0
-    const draw = (): void => {
-      const v = vizRef.current
-      const ctx = canvas.getContext('2d')
-      const w = (canvas.width = canvas.clientWidth * devicePixelRatio)
-      const h = (canvas.height = canvas.clientHeight * devicePixelRatio)
-      if (ctx) {
-        ctx.clearRect(0, 0, w, h)
-        const ok =
-          (systemRef.current ? readSystemSpectrum(data) : readSpectrum(data)) &&
-          playback.getState().status === 'playing'
-        const n = v.bars
-        // Low frequencies get more bars (that's where the music is).
-        const level = (i: number): number =>
-          ok
-            ? Math.min(
-                1,
-                (data[Math.floor((i / n) ** 1.6 * (SPECTRUM_BINS * 0.7))]! / 255) * v.sensitivity
-              )
-            : 0
-        const color = vizColor(v, artRef.current)
-        ctx.fillStyle = color
-        ctx.strokeStyle = color
-        const min = 2 * devicePixelRatio
-        if (v.style === 'wave') {
-          const pts = Array.from({ length: n }, (_, i) => ({
-            x: (i / (n - 1)) * w,
-            y: h - Math.max(min, level(i) * (h - min))
-          }))
-          ctx.beginPath()
-          ctx.moveTo(0, h)
-          ctx.lineTo(pts[0]!.x, pts[0]!.y)
-          for (let i = 1; i < pts.length; i++) {
-            const a = pts[i - 1]!
-            const b = pts[i]!
-            ctx.quadraticCurveTo(a.x, a.y, (a.x + b.x) / 2, (a.y + b.y) / 2)
-          }
-          ctx.lineTo(w, pts[pts.length - 1]!.y)
-          ctx.lineTo(w, h)
-          ctx.closePath()
-          ctx.globalAlpha = 0.25 * v.opacity
-          ctx.fill()
-          ctx.globalAlpha = v.opacity
-          ctx.lineWidth = 2 * devicePixelRatio
-          ctx.stroke()
-        } else {
-          const bw = w / n
-          for (let i = 0; i < n; i++) {
-            const lv = level(i)
-            const bh = Math.max(min, lv * h)
-            ctx.globalAlpha = (0.55 + lv * 0.45) * v.opacity
-            const y = v.style === 'mirror' ? (h - bh) / 2 : h - bh
-            ctx.fillRect(i * bw + bw * 0.15, y, bw * 0.7, bh)
-          }
-        }
-      }
-      raf = requestAnimationFrame(draw)
-    }
-    raf = requestAnimationFrame(draw)
-    return () => cancelAnimationFrame(raf)
-  }, [])
-  return <canvas ref={ref} aria-hidden className="w-full" style={{ height: viz.height }} />
-}
-
-/**
  * Full-window player (QoL 4): your picture or video behind the song, the artist on
  * the left, the cover, the whole lyrics on the right, what's next, and level bars.
  */
 export default function PlayerView(): React.JSX.Element {
   const track = usePlayback((s) => s.current?.track ?? null)
   const parts = usePlayerPage((s) => s.parts)
+  const viz = usePlayerPage((s) => s.viz)
+  const rootRef = useRef<HTMLDivElement>(null)
+  // One loop for the visualizer and the beat and bass effects; Spotify songs read the
+  // PC's sound when that's turned on (Spotify's own can't be read).
+  const spotify = track?.provider === 'spotify'
+  const effects = viz.beat || viz.bassBackground
+  useVizLoop(rootRef, viz, !!track && (parts.visualizer || effects), spotify && viz.systemSound)
+  const place = parts.visualizer ? viz.placement : null
   const full = useFullscreen()
   const add = usePlayerPage((s) => s.add)
   const setView = useUi((s) => s.setView)
@@ -440,8 +349,13 @@ export default function PlayerView(): React.JSX.Element {
     // or every song.
     <ContextMenu.Root>
       <ContextMenu.Trigger asChild>
-        <div className="relative isolate flex h-full flex-col overflow-hidden">
-          <Background track={track} />
+        <div ref={rootRef} className="relative isolate flex h-full flex-col overflow-hidden">
+          <Background
+            track={track}
+            overlay={
+              track && place === 'background' ? <VizCanvas className="absolute inset-0" /> : null
+            }
+          />
           <button
             onClick={() =>
               void (document.fullscreenElement
@@ -462,8 +376,16 @@ export default function PlayerView(): React.JSX.Element {
                 <div className="flex min-w-0 flex-1 flex-col justify-between pb-6">
                   {parts.artist ? <ArtistPanel track={track} /> : <span />}
                   <div className="flex items-end gap-4">
-                    <div className="size-[clamp(140px,22vh,260px)] flex-none overflow-hidden rounded-lg shadow-2xl">
-                      <Artwork src={track.artworkUrl} size={260} fill className="size-full" />
+                    <div className="relative size-[clamp(140px,22vh,260px)] flex-none">
+                      {place === 'cover' && (
+                        <VizCanvas className="absolute top-1/2 left-1/2 size-[220%] -translate-x-1/2 -translate-y-1/2" />
+                      )}
+                      <div
+                        className="relative size-full overflow-hidden rounded-lg shadow-2xl"
+                        style={{ transform: 'scale(calc(1 + var(--viz-cover, 0) * 0.05))' }}
+                      >
+                        <Artwork src={track.artworkUrl} size={260} fill className="size-full" />
+                      </div>
                     </div>
                     <div className="min-w-0 pb-1 text-white">
                       <p className="truncate text-xl font-black">{track.title}</p>
@@ -471,15 +393,23 @@ export default function PlayerView(): React.JSX.Element {
                     </div>
                   </div>
                 </div>
-                {parts.lyrics && <LyricsColumn />}
+                {place === 'lyrics' ? (
+                  <div className="relative min-w-[min(380px,32vw)]">
+                    <VizCanvas className="absolute inset-0 opacity-70" />
+                    {parts.lyrics && <LyricsColumn />}
+                  </div>
+                ) : (
+                  parts.lyrics && <LyricsColumn />
+                )}
                 {parts.queue && <QueueStrip />}
               </div>
-              {parts.visualizer && (
+              {place === 'bottom' ? (
                 <div className="px-8 pb-[calc(var(--play-bar-height)+var(--play-bar-inset)+8px)]">
-                  <Visualizer />
+                  <VizCanvas className="block w-full" style={{ height: viz.height }} />
                 </div>
+              ) : (
+                <div className="pb-page" />
               )}
-              {!parts.visualizer && <div className="pb-page" />}
             </>
           )}
         </div>

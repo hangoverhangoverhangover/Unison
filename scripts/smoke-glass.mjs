@@ -24,11 +24,11 @@ const ffmpeg = resolve('bin/ffmpeg.exe')
 const run = (args) => execFileSync(ffmpeg, ['-hide_banner', '-loglevel', 'error', '-y', ...args])
 
 /** A short silent mp3 with an embedded cover drawn by an ffmpeg lavfi source. */
-function track(file, title, artist, album, coverSource) {
+function track(file, title, artist, album, coverSource, audio = 'anullsrc=r=44100:cl=stereo') {
   const cover = join(userData, `${file}.png`)
   run(['-f', 'lavfi', '-i', coverSource, '-frames:v', '1', cover])
   run([
-    ...['-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=stereo', '-i', cover],
+    ...['-f', 'lavfi', '-i', audio, '-i', cover],
     // -t after the inputs: an output limit (before an -i it would bind to that input).
     ...['-t', '30', '-map', '0:a', '-map', '1:v', '-c:a', 'libmp3lame', '-q:a', '9'],
     ...['-c:v', 'png', '-disposition:v', 'attached_pic', '-id3v2_version', '3'],
@@ -43,7 +43,11 @@ track(
   'Glasshouse',
   'Neon Harbor',
   'Afterglow',
-  'gradients=s=600x600:c0=0xea580c:c1=0x7e22ce:c2=0x1d4ed8:n=3:speed=0'
+  'gradients=s=600x600:c0=0xea580c:c1=0x7e22ce:c2=0x1d4ed8:n=3:speed=0',
+  // The visualizer check needs sound: a kick twice a second, a chord and a hi-hat.
+  process.argv.includes('vizstyles')
+    ? "aevalsrc='0.7*sin(2*PI*55*t)*exp(-10*mod(t,0.5))+0.15*(sin(2*PI*220*t)+sin(2*PI*277*t)+sin(2*PI*330*t))*(0.6+0.4*sin(2*PI*0.25*t))+0.08*sin(2*PI*6000*t)*exp(-40*mod(t+0.25,0.5))':s=44100"
+    : undefined
 )
 track('02', 'White Room', 'Paper Moons', 'Blank', 'color=c=white:s=600x600')
 track('03', 'Night Shift', 'Paper Moons', 'Blank', 'color=c=black:s=600x600')
@@ -652,7 +656,7 @@ try {
     await win.getByRole('button', { name: 'Settings', exact: true }).click()
     const card = win.locator('section', { hasText: 'Pictures and videos behind' }).first()
     await card.getByRole('radio', { name: 'Mirrored' }).click()
-    await card.getByRole('radio', { name: 'Your colour' }).click()
+    await card.getByRole('radio', { name: 'Your colours' }).click()
     await card.scrollIntoViewIfNeeded()
     await card.screenshot({ path: `${out}/artwork-viz-settings.png` })
     await win.getByRole('button', { name: 'Player', exact: true }).first().click()
@@ -686,6 +690,72 @@ try {
       )
     )
     await win.evaluate(() => window.api.invoke('mini:toggle'))
+  }
+
+  if (want('vizstyles')) {
+    // Every visualizer style in its own place, with the beat and bass effects on.
+    const errors = []
+    win.on('console', (m) => m.type() === 'error' && errors.push(m.text()))
+    win.on('pageerror', (e) => errors.push(e.message))
+    await go('Local Files')
+    await win.getByRole('radio', { name: 'Unsorted' }).click()
+    await win.getByText('Glasshouse').first().dblclick()
+    await win.waitForTimeout(800)
+    // Repeat one, so the 30 s song outlasts the whole check.
+    await win.getByRole('button', { name: 'Repeat off' }).click()
+    await win.getByRole('button', { name: 'Repeat all' }).click()
+    const settings = async () => {
+      await win.getByRole('button', { name: 'Settings', exact: true }).click()
+      return win.locator('section', { hasText: 'Pictures and videos behind' }).first()
+    }
+    let card = await settings()
+    await card.getByRole('switch', { name: 'Beat detection' }).click()
+    await card.getByRole('switch', { name: 'Background breathes with the bass' }).click()
+    await card.getByRole('switch', { name: 'Gradient' }).click()
+    await card.scrollIntoViewIfNeeded()
+    await card.screenshot({ path: `${out}/viz-settings.png` })
+    const runs = [
+      ['Bars', 'Bottom'],
+      ['Ring', 'Around the cover'],
+      ['Circular wave', 'Around the cover'],
+      ['Particles', 'Full background'],
+      ['Spectrogram', 'Behind the lyrics'],
+      ['Shader', 'Full background']
+    ]
+    for (const [style, where] of runs) {
+      card = await settings()
+      await card.getByRole('radio', { name: style, exact: true }).click()
+      await card.getByRole('radio', { name: where, exact: true }).click()
+      if (style === 'Bars') await card.getByRole('switch', { name: 'Peak caps' }).click()
+      await win.getByRole('button', { name: 'Player', exact: true }).first().click()
+      await win.waitForTimeout(2500)
+      // Over 2 s (four kicks): the biggest beat pulse and bass the page saw.
+      const vars = await win.evaluate(
+        () =>
+          new Promise((done) => {
+            const el = document.querySelector('[style*="--viz-bass"]')
+            let cover = 0
+            let bass = 0
+            const t0 = performance.now()
+            const tick = () => {
+              const st = el ? getComputedStyle(el) : null
+              cover = Math.max(cover, Number(st?.getPropertyValue('--viz-cover') || 0))
+              bass = Math.max(bass, Number(st?.getPropertyValue('--viz-bass') || 0))
+              if (performance.now() - t0 < 2000) requestAnimationFrame(tick)
+              else done({ cover, bass })
+            }
+            tick()
+          })
+      )
+      await shot(`viz-${style.toLowerCase().replace(/ /g, '-')}`)
+      console.log(`viz ${style} @ ${where}:`, vars)
+    }
+    card = await settings()
+    await card.getByRole('button', { name: 'Club', exact: true }).click()
+    await win.getByRole('button', { name: 'Player', exact: true }).first().click()
+    await win.waitForTimeout(2500)
+    await shot('viz-preset-club')
+    console.log('viz errors:', errors.length ? errors : 'none')
   }
 
   if (want('discography')) {

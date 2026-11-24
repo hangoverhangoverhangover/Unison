@@ -134,7 +134,7 @@ describe('audio graph', () => {
     expect(f.every((x) => x.gain.value === 0)).toBe(true)
     // Second analyser: the Player page's level bars (QoL 4).
     expect(mix.out).toEqual([level, ctx.analysers[0], ctx.analysers[1]])
-    expect(ctx.analysers[1]?.fftSize).toBe(256)
+    expect(ctx.analysers[1]?.fftSize).toBe(1024)
     expect(level.out).toEqual([f[0]])
     for (let i = 0; i < 9; i++) expect(f[i]?.out).toEqual([f[i + 1]])
     expect(f[9]?.out).toEqual([master])
