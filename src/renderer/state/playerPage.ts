@@ -29,6 +29,17 @@ export const VIZ_PLACEMENTS: readonly VizPlacement[] = ['bottom', 'cover', 'back
 export type ShaderPreset = 'liquid' | 'kaleidoscope' | 'warp'
 export const SHADER_PRESETS: readonly ShaderPreset[] = ['liquid', 'kaleidoscope', 'warp']
 
+/** One visualizer style drawn somewhere on the Player page. */
+export interface VizLayer {
+  style: VizStyle
+  placement: VizPlacement
+  /** 0.2 to 1. */
+  opacity: number
+}
+
+/** Styles drawn on top of the first one (style, placement, opacity below). */
+export const MAX_EXTRA_LAYERS = 2
+
 /** How the Player page's visualizer looks and reacts (Settings → Player). */
 export interface VizSettings {
   style: VizStyle
@@ -95,6 +106,15 @@ export interface VizSettings {
   shaderPreset: ShaderPreset
   /** 0 calm to 1 wild. */
   shaderIntensity: number
+  /** More styles at once (say, a shader behind everything and bars at the bottom). */
+  extraLayers: VizLayer[]
+  /** Make the cover round while a style sits around it, so a ring can hug it. */
+  roundCover: boolean
+}
+
+/** Every style to draw: the first one, then the extra layers. */
+export function vizLayers(v: VizSettings): VizLayer[] {
+  return [{ style: v.style, placement: v.placement, opacity: v.opacity }, ...v.extraLayers]
 }
 
 export const DEFAULT_VIZ: VizSettings = {
@@ -128,7 +148,9 @@ export const DEFAULT_VIZ: VizSettings = {
   spectrogramSpeed: 2,
   circleRings: 2,
   shaderPreset: 'liquid',
-  shaderIntensity: 0.5
+  shaderIntensity: 0.5,
+  extraLayers: [],
+  roundCover: true
 }
 export const VIZ_LIMITS = {
   bars: [16, 128],
@@ -200,7 +222,18 @@ export function cleanViz(raw: unknown): VizSettings {
     spectrogramSpeed: num('spectrogramSpeed', true),
     circleRings: num('circleRings', true),
     shaderPreset: oneOf(r.shaderPreset, SHADER_PRESETS, D.shaderPreset),
-    shaderIntensity: num('shaderIntensity')
+    shaderIntensity: num('shaderIntensity'),
+    extraLayers: (Array.isArray(r.extraLayers) ? r.extraLayers : [])
+      .slice(0, MAX_EXTRA_LAYERS)
+      .map((l: unknown) => {
+        const o = (l && typeof l === 'object' ? l : {}) as Record<string, unknown>
+        return {
+          style: oneOf(o.style, VIZ_STYLES, D.style),
+          placement: oneOf(o.placement, VIZ_PLACEMENTS, D.placement),
+          opacity: clamp(o.opacity, VIZ_LIMITS.opacity, D.opacity)
+        }
+      }),
+    roundCover: bool('roundCover')
   }
 }
 
@@ -268,6 +301,23 @@ export const BUILTIN_PRESETS: readonly VizPreset[] = [
       shaderPreset: 'liquid',
       shaderIntensity: 0.4,
       opacity: 0.55,
+      beat: true,
+      beatCover: true,
+      bassBackground: true,
+      bassAmount: 0.4
+    }
+  },
+  {
+    name: 'Dreamy + bars',
+    settings: {
+      style: 'shader',
+      placement: 'background',
+      shaderPreset: 'liquid',
+      shaderIntensity: 0.4,
+      opacity: 0.55,
+      extraLayers: [{ style: 'bars', placement: 'bottom', opacity: 0.9 }],
+      peaks: true,
+      gradient: true,
       beat: true,
       beatCover: true,
       bassBackground: true,

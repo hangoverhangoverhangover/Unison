@@ -8,7 +8,12 @@ import type { Artist, Track } from '@shared/types'
 import { playback } from '@renderer/playback/controller'
 import { usePlayback } from '@renderer/state/player'
 import { useLyrics } from '@renderer/state/lyrics'
-import { usePlayerPage } from '@renderer/state/playerPage'
+import {
+  usePlayerPage,
+  vizLayers,
+  type VizLayer,
+  type VizPlacement
+} from '@renderer/state/playerPage'
 import { useUi } from '@renderer/state/ui'
 import { useLyricPosition } from '@renderer/lib/useLyricPosition'
 import { useFullscreen } from '@renderer/lib/useFullscreen'
@@ -325,6 +330,16 @@ function QueueStrip(): React.JSX.Element | null {
   )
 }
 
+/** Fades a visualizer box out at its edges, so its square never shows. */
+const SOFT_ROUND: React.CSSProperties = {
+  maskImage: 'radial-gradient(closest-side, #000 82%, transparent 100%)'
+}
+const SOFT_BOX: React.CSSProperties = {
+  maskImage:
+    'linear-gradient(to right, transparent, #000 15%, #000 85%, transparent), linear-gradient(transparent, #000 15%, #000 85%, transparent)',
+  maskComposite: 'intersect'
+}
+
 /**
  * Full-window player (QoL 4): your picture or video behind the song, the artist on
  * the left, the cover, the whole lyrics on the right, what's next, and level bars.
@@ -339,7 +354,15 @@ export default function PlayerView(): React.JSX.Element {
   const spotify = track?.provider === 'spotify'
   const effects = viz.beat || viz.bassBackground
   useVizLoop(rootRef, viz, !!track && (parts.visualizer || effects), spotify && viz.systemSound)
-  const place = parts.visualizer ? viz.placement : null
+  // Every style layer, by where it sits.
+  const layers = parts.visualizer ? vizLayers(viz) : []
+  const at = (p: VizPlacement): { layer: VizLayer; key: number }[] =>
+    layers.flatMap((layer, key) => (layer.placement === p ? [{ layer, key }] : []))
+  const back = at('background')
+  const cover = at('cover')
+  const lyrics = at('lyrics')
+  const bottom = at('bottom')
+  const round = cover.length > 0 && viz.roundCover
   const full = useFullscreen()
   const add = usePlayerPage((s) => s.add)
   const setView = useUi((s) => s.setView)
@@ -353,7 +376,10 @@ export default function PlayerView(): React.JSX.Element {
           <Background
             track={track}
             overlay={
-              track && place === 'background' ? <VizCanvas className="absolute inset-0" /> : null
+              track &&
+              back.map(({ layer, key }) => (
+                <VizCanvas key={key} layer={layer} className="absolute inset-0" />
+              ))
             }
           />
           <button
@@ -376,26 +402,50 @@ export default function PlayerView(): React.JSX.Element {
                 <div className="flex min-w-0 flex-1 flex-col justify-between pb-6">
                   {parts.artist ? <ArtistPanel track={track} /> : <span />}
                   <div className="flex items-end gap-4">
-                    <div className="relative size-[clamp(140px,22vh,260px)] flex-none">
-                      {place === 'cover' && (
-                        <VizCanvas className="absolute top-1/2 left-1/2 size-[220%] -translate-x-1/2 -translate-y-1/2" />
-                      )}
+                    {/* With a style around it, the cover gets room so the style clears
+                        the title and the play bar. */}
+                    <div
+                      className="relative size-(--cover) flex-none"
+                      style={
+                        {
+                          '--cover': 'clamp(140px, 22vh, 260px)',
+                          margin: cover.length ? 'calc(var(--cover) * 0.3)' : undefined
+                        } as React.CSSProperties
+                      }
+                    >
+                      {cover.map(({ layer, key }) => (
+                        <VizCanvas
+                          key={key}
+                          layer={layer}
+                          className="absolute top-1/2 left-1/2 size-[220%] -translate-x-1/2 -translate-y-1/2"
+                          style={SOFT_ROUND}
+                        />
+                      ))}
                       <div
-                        className="relative size-full overflow-hidden rounded-lg shadow-2xl"
+                        className={`relative size-full overflow-hidden shadow-2xl ${
+                          round ? 'rounded-full' : 'rounded-lg'
+                        }`}
                         style={{ transform: 'scale(calc(1 + var(--viz-cover, 0) * 0.05))' }}
                       >
                         <Artwork src={track.artworkUrl} size={260} fill className="size-full" />
                       </div>
                     </div>
-                    <div className="min-w-0 pb-1 text-white">
+                    <div className="relative min-w-0 pb-1 text-white">
                       <p className="truncate text-xl font-black">{track.title}</p>
                       <p className="truncate text-white/75">{track.artists.join(', ')}</p>
                     </div>
                   </div>
                 </div>
-                {place === 'lyrics' ? (
+                {lyrics.length ? (
                   <div className="relative min-w-[min(380px,32vw)]">
-                    <VizCanvas className="absolute inset-0 opacity-70" />
+                    {lyrics.map(({ layer, key }) => (
+                      <VizCanvas
+                        key={key}
+                        layer={layer}
+                        className="absolute inset-0 opacity-70"
+                        style={SOFT_BOX}
+                      />
+                    ))}
                     {parts.lyrics && <LyricsColumn />}
                   </div>
                 ) : (
@@ -403,9 +453,21 @@ export default function PlayerView(): React.JSX.Element {
                 )}
                 {parts.queue && <QueueStrip />}
               </div>
-              {place === 'bottom' ? (
-                <div className="px-8 pb-[calc(var(--play-bar-height)+var(--play-bar-inset)+8px)]">
-                  <VizCanvas className="block w-full" style={{ height: viz.height }} />
+              {bottom.length ? (
+                <div
+                  className="relative px-8 pb-[calc(var(--play-bar-height)+var(--play-bar-inset)+8px)]"
+                  style={{
+                    height: `calc(${viz.height}px + var(--play-bar-height) + var(--play-bar-inset) + 8px)`
+                  }}
+                >
+                  {bottom.map(({ layer, key }) => (
+                    <VizCanvas
+                      key={key}
+                      layer={layer}
+                      className="absolute inset-x-8 top-0"
+                      style={{ height: viz.height }}
+                    />
+                  ))}
                 </div>
               ) : (
                 <div className="pb-page" />

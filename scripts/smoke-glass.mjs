@@ -750,11 +750,28 @@ try {
       await shot(`viz-${style.toLowerCase().replace(/ /g, '-')}`)
       console.log(`viz ${style} @ ${where}:`, vars)
     }
+    for (const preset of ['Club', 'Dreamy + bars']) {
+      card = await settings()
+      await card.getByRole('button', { name: preset, exact: true }).click()
+      await win.getByRole('button', { name: 'Player', exact: true }).first().click()
+      await win.waitForTimeout(2500)
+      console.log(`viz preset ${preset}: canvases`, await win.locator('main canvas').count())
+      await shot(`viz-preset-${preset.toLowerCase().replace(/[^a-z]+/g, '-')}`)
+    }
+    // Round cover and the ring clear of the title and the play bar.
+    const box = (sel) =>
+      win.locator(sel).first().evaluate((e) => {
+        const r = e.getBoundingClientRect()
+        return { left: r.left, right: r.right, top: r.top, bottom: r.bottom }
+      })
     card = await settings()
     await card.getByRole('button', { name: 'Club', exact: true }).click()
     await win.getByRole('button', { name: 'Player', exact: true }).first().click()
-    await win.waitForTimeout(2500)
-    await shot('viz-preset-club')
+    await win.waitForTimeout(800)
+    const coverBox = await box('main .rounded-full')
+    const title = await box('main p.text-xl')
+    const bar = await box('footer, [data-play-bar], .play-bar').catch(() => null)
+    console.log('cover', coverBox, 'title', title, 'bar', bar)
     console.log('viz errors:', errors.length ? errors : 'none')
   }
 

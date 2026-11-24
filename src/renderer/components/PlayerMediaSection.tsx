@@ -1,15 +1,18 @@
-import { Film, ImagePlus, Trash2, X } from 'lucide-react'
+import { Film, ImagePlus, Plus, Trash2, X } from 'lucide-react'
 import { useState } from 'react'
 import { playerMediaUrl, type PlayerMedia, type PlayerMediaScope } from '@shared/player'
 import { usePlayback } from '@renderer/state/player'
 import {
   usePlayerPage,
   BUILTIN_PRESETS,
+  MAX_EXTRA_LAYERS,
+  vizLayers,
   SWAP_LIMITS,
   VIZ_LIMITS,
   type PlayerParts,
   type ShaderPreset,
   type VizColor,
+  type VizLayer,
   type VizPlacement,
   type VizStyle
 } from '@renderer/state/playerPage'
@@ -257,7 +260,12 @@ function VisualizerSettings(): React.JSX.Element {
   const viz = usePlayerPage((s) => s.viz)
   const setViz = usePlayerPage((s) => s.setViz)
   const L = VIZ_LIMITS
-  const barStyle = viz.style === 'bars' || viz.style === 'mirror' || viz.style === 'radial'
+  const layers = vizLayers(viz)
+  const uses = (...styles: VizStyle[]): boolean => layers.some((l) => styles.includes(l.style))
+  const placed = (p: VizPlacement): boolean => layers.some((l) => l.placement === p)
+  const barStyle = uses('bars', 'mirror', 'radial')
+  const setExtra = (i: number, patch: Partial<VizLayer>): void =>
+    setViz({ extraLayers: viz.extraLayers.map((l, j) => (j === i ? { ...l, ...patch } : l)) })
   return (
     <div className="mt-5 flex flex-col gap-4">
       <p className="text-sm font-semibold text-text-subdued">Visualizer</p>
@@ -277,11 +285,75 @@ function VisualizerSettings(): React.JSX.Element {
         onChange={(placement) => setViz({ placement })}
       />
 
+      {viz.extraLayers.map((layer, i) => (
+        <div key={i} className="flex flex-col gap-3 rounded-lg bg-raised/60 p-3">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-semibold">Style {i + 2}</p>
+            <button
+              onClick={() => setViz({ extraLayers: viz.extraLayers.filter((_, j) => j !== i) })}
+              className={ghost}
+            >
+              <Trash2 size={14} /> Remove
+            </button>
+          </div>
+          <Choice
+            label="Style"
+            id={`viz-style-${i}`}
+            value={layer.style}
+            options={STYLES}
+            onChange={(style) => setExtra(i, { style })}
+          />
+          <Choice
+            label="Where"
+            id={`viz-place-${i}`}
+            value={layer.placement}
+            options={PLACEMENTS}
+            onChange={(placement) => setExtra(i, { placement })}
+          />
+          <RangeField
+            label="Opacity"
+            value={layer.opacity}
+            min={L.opacity[0]}
+            max={L.opacity[1]}
+            step={0.05}
+            format={pct}
+            onChange={(opacity) => setExtra(i, { opacity })}
+          />
+        </div>
+      ))}
+      {viz.extraLayers.length < MAX_EXTRA_LAYERS && (
+        <button
+          onClick={() =>
+            setViz({
+              extraLayers: [
+                ...viz.extraLayers,
+                {
+                  style: viz.style === 'bars' ? 'shader' : 'bars',
+                  placement: viz.placement === 'bottom' ? 'background' : 'bottom',
+                  opacity: 0.8
+                }
+              ]
+            })
+          }
+          className={`${ghost} self-start`}
+        >
+          <Plus size={14} /> Add another style
+        </button>
+      )}
+      {placed('cover') && (
+        <Toggle
+          label="Round cover"
+          hint="Make the cover round while a style sits around it, so a ring hugs it."
+          checked={viz.roundCover}
+          onChange={(roundCover) => setViz({ roundCover })}
+        />
+      )}
+
       <Heading>Size and feel</Heading>
       <div className="grid grid-cols-2 gap-x-6 gap-y-4">
-        {viz.style !== 'shader' && viz.style !== 'spectrogram' && viz.style !== 'particles' && (
+        {uses('bars', 'mirror', 'wave', 'radial') && (
           <RangeField
-            label={viz.style === 'wave' ? 'Points' : viz.style === 'radial' ? 'Spokes' : 'Bars'}
+            label="Bars"
             value={viz.bars}
             min={L.bars[0]}
             max={L.bars[1]}
@@ -290,7 +362,7 @@ function VisualizerSettings(): React.JSX.Element {
             onChange={(bars) => setViz({ bars })}
           />
         )}
-        {viz.placement === 'bottom' && (
+        {placed('bottom') && (
           <RangeField
             label="Height"
             value={viz.height}
@@ -311,7 +383,7 @@ function VisualizerSettings(): React.JSX.Element {
           onChange={(sensitivity) => setViz({ sensitivity })}
         />
         <RangeField
-          label="Opacity"
+          label={viz.extraLayers.length ? 'Opacity (style 1)' : 'Opacity'}
           value={viz.opacity}
           min={L.opacity[0]}
           max={L.opacity[1]}
@@ -360,7 +432,7 @@ function VisualizerSettings(): React.JSX.Element {
         checked={viz.logScale}
         onChange={(logScale) => setViz({ logScale })}
       />
-      {(barStyle || viz.style === 'wave') && (
+      {(barStyle || uses('wave')) && (
         <>
           <Toggle
             label="Peak caps"
@@ -382,7 +454,7 @@ function VisualizerSettings(): React.JSX.Element {
         </>
       )}
 
-      {viz.style === 'particles' && (
+      {uses('particles') && (
         <div className="grid grid-cols-2 gap-x-6 gap-y-4">
           <RangeField
             label="Particles"
@@ -404,7 +476,7 @@ function VisualizerSettings(): React.JSX.Element {
           />
         </div>
       )}
-      {viz.style === 'spectrogram' && (
+      {uses('spectrogram') && (
         <RangeField
           label="Scroll speed"
           value={viz.spectrogramSpeed}
@@ -415,7 +487,7 @@ function VisualizerSettings(): React.JSX.Element {
           onChange={(spectrogramSpeed) => setViz({ spectrogramSpeed })}
         />
       )}
-      {viz.style === 'circle' && (
+      {uses('circle') && (
         <RangeField
           label="Rings"
           value={viz.circleRings}
@@ -426,7 +498,7 @@ function VisualizerSettings(): React.JSX.Element {
           onChange={(circleRings) => setViz({ circleRings })}
         />
       )}
-      {viz.style === 'shader' && (
+      {uses('shader') && (
         <>
           <Choice
             label="Effect"

@@ -10,8 +10,8 @@ export function createRadial(): VizRenderer {
       const cx = w / 2
       const cy = h / 2
       const size = Math.min(w, h)
-      const r0 = size * 0.34 * (1 + frame.pulse * 0.06)
-      const len = size * 0.15
+      const r0 = size * 0.25 * (1 + frame.pulse * 0.06)
+      const len = size * 0.13
       // Each bar is drawn twice (left and right halves mirror), so bass sits at the top.
       const spokes = n * 2
       const width = Math.max(1.5 * dpr, ((Math.PI * 2 * r0) / spokes) * 0.55)

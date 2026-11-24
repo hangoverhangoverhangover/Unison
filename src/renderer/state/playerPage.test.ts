@@ -6,7 +6,8 @@ import {
   cleanSwap,
   cleanViz,
   DEFAULT_SWAP,
-  DEFAULT_VIZ
+  DEFAULT_VIZ,
+  vizLayers
 } from './playerPage'
 
 describe('cleanViz', () => {
@@ -127,5 +128,36 @@ describe('cleanSwap', () => {
       imageSeconds: 3,
       plays: 10
     })
+  })
+})
+
+describe('visualizer layers', () => {
+  it('lists the first style then the extras, and cleans extras', () => {
+    const v = cleanViz({
+      style: 'shader',
+      placement: 'background',
+      opacity: 0.5,
+      extraLayers: [
+        { style: 'bars', placement: 'bottom', opacity: 3 },
+        { style: 'nope', placement: 'moon' },
+        { style: 'radial', placement: 'cover', opacity: 0.4 }
+      ]
+    })
+    expect(vizLayers(v)).toEqual([
+      { style: 'shader', placement: 'background', opacity: 0.5 },
+      { style: 'bars', placement: 'bottom', opacity: 1 },
+      { style: 'bars', placement: 'bottom', opacity: 1 }
+    ])
+    expect(cleanViz({ extraLayers: 'x' }).extraLayers).toEqual([])
+  })
+
+  it('a preset with two styles replaces the extras you had', () => {
+    const mine = cleanViz({ extraLayers: [{ style: 'particles', placement: 'cover', opacity: 1 }] })
+    const two = applyPreset(
+      mine,
+      BUILTIN_PRESETS.find((p) => p.name === 'Dreamy + bars')!
+    )
+    expect(vizLayers(two).map((l) => l.style)).toEqual(['shader', 'bars'])
+    expect(applyPreset(mine, BUILTIN_PRESETS[0]!).extraLayers).toEqual([])
   })
 })

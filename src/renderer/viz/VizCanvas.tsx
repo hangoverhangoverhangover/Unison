@@ -1,9 +1,14 @@
 // One visualizer canvas on the Player page. Draws the chosen style from the shared loop's
 // frames: 2D styles on a 2D canvas (with trails and glow done here), shader mode on its
 // own WebGL canvas (a canvas can't switch context types, so it remounts).
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { usePlayback } from '@renderer/state/player'
-import { usePlayerPage, type VizSettings, type VizStyle } from '@renderer/state/playerPage'
+import {
+  usePlayerPage,
+  type VizLayer,
+  type VizSettings,
+  type VizStyle
+} from '@renderer/state/playerPage'
 import { useAppearance } from '@renderer/state/appearance'
 import { artColors, shiftHue } from '@renderer/lib/artColor'
 import { onVizFrame } from './loop'
@@ -162,22 +167,26 @@ function CanvasShader({ viz, colors }: { viz: VizSettings; colors: VizColors }):
   return <canvas ref={ref} aria-hidden className="size-full" />
 }
 
-/** The visualizer, filling its box. */
+/** One visualizer layer (style, placement, opacity), filling its box. */
 export default function VizCanvas({
+  layer,
   className,
   style
 }: {
+  layer: VizLayer
   className?: string
   style?: React.CSSProperties
 }): React.JSX.Element {
-  const viz = usePlayerPage((s) => s.viz)
+  const shared = usePlayerPage((s) => s.viz)
+  // The layer's own style and opacity over the shared settings.
+  const viz = useMemo(() => ({ ...shared, ...layer }), [shared, layer])
   const colors = useVizColors(viz)
   return (
     <div aria-hidden className={`pointer-events-none ${className ?? ''}`} style={style}>
       {viz.style === 'shader' ? (
         <CanvasShader viz={viz} colors={colors} />
       ) : (
-        <Canvas2D viz={viz} colors={colors} />
+        <Canvas2D key={viz.style} viz={viz} colors={colors} />
       )}
     </div>
   )
